@@ -235,8 +235,23 @@ class_comparison
 
 lgtm
 
+
+next step is scaling and centering the data
+
 ```{r}
 
-write_csv(data_no_outliers, "data_clean.csv")
+data_scaled <- data_no_outliers %>%
+  select(-label) %>%
+  scale() %>%
+  as.data.frame() %>%
+  bind_cols(data_no_outliers %>% select(label))
+
+skim(data_scaled)
+```
 
 
+```{r}
+
+write_csv(data_scaled, "data_clean.csv")
+
+```
