@@ -1,0 +1,242 @@
+---
+title: "preprocessing"
+author: "Daniel Hill"
+format: pdf
+editor: visual
+---
+
+# Preprocessing
+
+In this section, using what we learned in the EDA section, we will take steps towards preparing our data for analysis and modelling. This will include cleaning, centering and scaling the data.
+
+we are going to clean the dataframe by removing all rows with null values - as we found earlier, there are only a very small number of null cases so we are not worried about distorting any trends by removing these rows and it garauntees us a clean dataset to work with.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+```{r}
+
+library(tidyverse)
+library(skimr)  
+
+```
+
+
+```{r}
+
+data <- read_csv("Data(2).csv")
+
+dim(data)
+skim(data)
+
+data_clean <- data %>% drop_na()
+cat("\n\n", "Original rows:", nrow(data), "\n")
+cat("Rows after removing missing values:", nrow(data_clean), "\n")
+cat("Rows removed:", nrow(data) - nrow(data_clean), "\n")
+```
+
+
+```{r}
+# this is mostly the same code as in the eda file
+
+# calculate z score to use for detecting anomalies. We are going to use this for all columns except label and column X8
+data_ex_x8 <- data_clean %>% select(-X8)
+data_x8 <- data_clean %>% select(X8)
+
+z_scores <- data_ex_x8 %>%
+  select(-label) %>%
+  mutate(across(everything(), scale)) %>%
+  mutate(row_id = row_number())
+
+
+z_long <- z_scores %>%
+  pivot_longer(cols = -row_id, names_to = "feature", values_to = "z_score")
+
+
+z_outliers <- z_long %>%
+  filter(z_score > 3 | z_score < -3)
+
+
+z_outlier_count <- z_outliers %>%
+  group_by(feature) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+ggplot(z_outlier_count, aes(x = reorder(feature, count), y = count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Outliers by Feature (Z-score method)",
+       x = "Feature", y = "Count of outliers") +
+  theme_minimal()
+```
+
+```{r}
+
+z_test_outlier_rows <- z_outliers %>% 
+  distinct(row_id) %>% 
+  pull(row_id)
+```
+
+```{r}
+
+summary(data_x8)
+
+
+```
+there are no negative values or values equal to 0, so its going to be safe to directly apply a log transformation to the column
+
+```{r}
+
+data_x8 <- data_x8 %>% 
+  mutate(log_X8 = log(X8), log2_X8 = log(X8, base=2), log10_X8 = log(X8, base=10))
+
+data_x8_long <- data_x8 %>%
+  pivot_longer(
+    cols = everything(), names_to="transform", values_to="value"
+  )
+
+ggplot(data_x8_long, aes(x = value)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black") +
+  facet_wrap(~ transform, scales = "free") +
+  theme_minimal() +
+  labs(x = "Value", y = "Count", title = "Histograms of All transforms of X8")
+
+```
+these look much more symetrical to me, even though ther is still some skewness. We will proceed using the natural log transform - if I have time I can come back and calculate a proper test for normality to justify this. 
+
+```{r}
+data_clean <- data_clean %>% mutate(X8=log(X8))
+
+
+z_scores <- data_clean %>%
+  select(-label) %>%
+  mutate(across(everything(), scale)) %>%
+  mutate(row_id = row_number())
+
+
+z_long <- z_scores %>%
+  pivot_longer(cols = -row_id, names_to = "feature", values_to = "z_score")
+
+
+z_outliers <- z_long %>%
+  filter(z_score > 3 | z_score < -3)
+
+
+z_outlier_count <- z_outliers %>%
+  group_by(feature) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+ggplot(z_outlier_count, aes(x = reorder(feature, count), y = count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Outliers by Feature (Z-score method)",
+       x = "Feature", y = "Count of outliers") +
+  theme_minimal()
+```
+Suprisingly, there are still far more outliers in X8 than anyother column. It has been reduced from 51 to 46 which shows that the normalization was somewhat effective.
+
+```{r}
+
+library(rstatix)
+
+data_long <- data_clean %>%
+  select(X8) %>%
+  mutate(row_id = row_number()) %>%
+  pivot_longer(cols = -row_id, names_to = "Feature", values_to = "Value")
+
+
+boxscore_outliers <- data_long %>%
+  group_by(Feature) %>%
+  identify_outliers(Value) # rstatix uses iqr method by default, i think
+
+boxscore_outliers
+
+extreme_outliers <- boxscore_outliers %>% 
+  filter(is.extreme)
+
+cat("\nrstatix boxscore X8 outliers:", nrow(boxscore_outliers), "\n")
+cat("rstatix extreme boxscore X8 outliers:", nrow(extreme_outliers))
+```
+Using the "extreme" threshold for this IQR test feels a little arbritary to me. So I will proceed with using the z score test approach. Before removing, I want to check if the anomalies are skewed toward any particular label value
+
+```{r}
+
+
+all_outlier_rows <- z_outliers %>%
+  distinct(row_id) %>%
+  pull(row_id)
+
+
+
+
+outlier_label_counts <- data_clean %>%
+  mutate(row_id = row_number()) %>% # im hoping row_number() is deterministic? i should check this, or create row_id immediately when loading data
+  filter(row_id %in% all_outlier_rows) %>%
+  count(label, name = "count") %>%
+  mutate(percentage = round(count / sum(count) * 100, 1))
+
+
+outlier_label_counts
+
+
+```
+the original distribution of labels was pretty much uniform, so ideally we would get about 50 of each label being removed. However, in a dataset of 2980 rows, im confident that removing these rows is not going to change the distribution of labels in the data significantly, and I don't believe that the label of these anomalies is following a pattern.
+
+```{r}
+cat("Total rows with outliers:", length(outlier_rows), "\n")
+cat("Percentage of rows with outliers:", 
+    round(length(outlier_rows) / nrow(data_clean) * 100, 2), "%\n")
+
+```
+
+```{r}
+
+data_no_outliers <- data_clean %>%
+  mutate(row_id = row_number()) %>%
+  filter(!(row_id %in% all_outlier_rows)) %>%
+  select(-row_id)  # drop row_id, wont use it again
+
+
+cat("Original dataset rows:", nrow(data_clean), "\n")
+cat("Rows after outlier removal:", nrow(data_no_outliers), "\n")
+cat("Rows removed:", nrow(data_clean) - nrow(data_no_outliers), "\n")
+
+# lets double check that we haven't altered the label distribution
+class_before <- data_clean %>%
+  count(label) %>%
+  mutate(percentage = round(n / sum(n) * 100, 2)) %>%
+  rename(count_before = n, pct_before = percentage)
+
+class_after <- data_no_outliers %>%
+  count(label) %>%
+  mutate(percentage = round(n / sum(n) * 100, 2)) %>%
+  rename(count_after = n, pct_after = percentage)
+
+
+class_comparison <- left_join(class_before, class_after, by = "label") %>%
+  mutate(
+    removed = count_before - count_after,
+    pct_change = round((pct_after - pct_before), 2)
+  )
+
+class_comparison
+```
+
+lgtm
+
+```{r}
+
+write_csv(data_no_outliers, "data_clean.csv")
+
+
