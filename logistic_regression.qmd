@@ -1,0 +1,680 @@
+---
+title: "logistic regression"
+author: "Daniel Hill"
+format: html
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+## Setting up
+
+```{r}
+library(tidyverse)
+library(caret)
+```
+
+```{r}
+data <- read_csv("data_clean.csv")
+data
+```
+
+```{r}
+data$label <- as.factor(data$label) # factor is like an enum, means A,B,C,D are read as categories not strings
+```
+
+```{r}
+set.seed(121) # set the seed at the top so the entire doc is reproducable
+```
+
+```{r}
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>% 
+  createDataPartition(p = 0.8, list = FALSE) # create 80:20 split for train:test
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+
+# check class distribution are similar in both splits
+prop.table(table(train_data$label))
+prop.table(table(test_data$label))
+```
+
+## Modelling
+
+### simple models
+
+We will start by produceing a few simple univariate models with some of the more interesting columns we identified during eda. Since there are four labels we are predicting, we need to use multinom() instead of multinom()
+```{r}
+library(nnet)
+```
+
+
+```{r} 
+X8_model <- nnet::multinom( label ~ X8, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X7_model <- multinom( label ~ X7, data = train_data) 
+summary(model)$coef
+```
+```{r} 
+X9_model <- multinom( label ~ X9, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X3_model <- multinom( label ~ X3, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X2_model <- multinom( label ~ X2, data = train_data) 
+summary(model)$coef
+```
+
+unfortunetly, mulinom() doesn't give us as helpful a summary as glm() does. 
+
+```{r}
+for (model in list(X9_model, X8_model, X7_model, X3_model, X2_model) ) {
+  cat("\n\n\n") # print doesnt print new lines. what a silly programming language
+  coef_matrix <- coef(model)
+  cat("\n","coef matrix", "\n")
+  print(coef_matrix)
+  
+  std_errors <- summary(model)$standard.errors
+  cat("\n","std errors", "\n")
+  print(std_errors)
+  
+  z_scores <- coef_matrix/std_errors
+  cat("\n","z score", "\n")
+  print(z_scores)
+  
+  p_values <- 2 * (1 - pnorm(abs(z_scores)))
+  cat("\n","p values", "\n")
+  print(p_values)
+  cat("\n\n")
+}
+```
+
+now lets look at some columns that we expect to perform poorly
+
+```{r} 
+X17_model <- multinom( label ~ X17, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X18_model <- multinom( label ~ X18, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X19_model <- multinom( label ~ X19, data = train_data) 
+summary(model)$coef
+```
+
+```{r} 
+X20_model <- multinom( label ~ X20, data = train_data) 
+summary(model)$coef
+```
+```{r}
+for (model in list(X17_model, X18_model, X19_model, X20_model) ) {
+  cat("\n\n\n") # print doesnt print new lines. what a silly programming language
+  coef_matrix <- coef(model)
+  cat("\n","coef matrix", "\n")
+  print(coef_matrix)
+  
+  std_errors <- summary(model)$standard.errors
+  cat("\n","std errors", "\n")
+  print(std_errors)
+  
+  z_scores <- coef_matrix/std_errors
+  cat("\n","z score", "\n")
+  print(z_scores)
+  
+  p_values <- 2 * (1 - pnorm(abs(z_scores)))
+  cat("\n","p values", "\n")
+  print(p_values)
+  cat("\n\n")
+}
+```
+These coefficeints are all closer to 0 on average than the first four, but I've learned that the coefficient for X18 is higher than I would have expected. When it comes to feature selection, it may be that incluing only X18 out of these four is a good option since the four features correlate highly with one another and X18 is the one that seems to have most predictive power.
+We also know that X9, X8 and X7 are correlated with one another. Selecting features out of these will be trickier as there was not one that performed far better that the others - they seem to have stronger correlations each with different labels i.e. X9 looks like it will decern strongly between label C and other labels, but barely at all between label A and label D. Trial and error will be the best approach for choosing out of these features, or if theres time we could try doing something like reducing dimensionality of these 3 column by looking for hidden underlying factors.
+
+Now we will build a logistic model with all features and see how it performs.
+
+```{r}
+
+model <- multinom(
+    label ~ ., # use all cols
+    data = train_data)
+coef_matrix <- coef(model)
+cat("\n","coef matrix", "\n")
+print(coef_matrix)
+
+std_errors <- summary(model)$standard.errors
+cat("\n","std errors", "\n")
+print(std_errors)
+
+z_scores <- coef_matrix/std_errors
+cat("\n","z score", "\n")
+print(z_scores)
+
+p_values <- 2 * (1 - pnorm(abs(z_scores)))
+cat("\n","p values", "\n")
+print(p_values)
+cat("\n\n")
+```
+
+```{r}
+predictions <- predict(model, test_data, type = "class") # using type-class gives a prediction of the label value directly
+predictions
+```
+
+```{r}
+conf_matrix = confusionMatrix(predictions, test_data$label)
+conf_matrix
+
+
+```
+
+a 85% accuracy with a low p value is pretty good for our first model. We can see we were good at predicting classes B and C, and not bad at A. Class D has a lot of misclassifications. The model seems to particularly struggle at discerning classes A and D, where each has a high (relatively) rate of being misclassified as the other. 
+
+lets use this output to calculate precision recall and f1 score:
+
+
+```{r}
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+
+```
+
+This backs up our initial observations.
+
+
+To improve our model, we could try removing some features that have low predictive power for class D in order to boost the feature importance of ones that do. first we need to evaluate how good each feature is at discriminating the classes
+
+
+```{r}
+
+results_df <- data.frame(
+  Actual = test_data$label,
+  Predicted = predictions,
+  Correct = test_data$label == predictions
+)
+
+results_df <- cbind(results_df, test_data[, 1:20])
+
+ggplot(results_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Misclassifications by X7 and X8",
+       color = "Correctly Classified",
+       shape = "Actual Class")
+```
+```{r}
+
+results_df <- data.frame(
+  Actual = test_data$label,
+  Predicted = predictions,
+  Correct = test_data$label == predictions
+)
+
+results_df <- cbind(results_df, test_data[, 1:20])
+
+ggplot(results_df, aes(x = X9, y = X8, color = Correct, shape = Actual)) +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Misclassifications by X9 and X8",
+       color = "Correctly Classified",
+       shape = "Actual Class")
+```
+```{r}
+
+results_df <- data.frame(
+  Actual = test_data$label,
+  Predicted = predictions,
+  Correct = test_data$label == predictions
+)
+
+results_df <- cbind(results_df, test_data[, 1:20])
+
+ggplot(results_df, aes(x = X9, y = X7, color = Correct, shape = Actual)) +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Misclassifications by X9 and X7",
+       color = "Correctly Classified",
+       shape = "Actual Class")
+```
+
+```{r}
+
+results_df <- data.frame(
+  Actual = test_data$label,
+  Predicted = predictions,
+  Correct = test_data$label == predictions
+)
+
+results_df <- cbind(results_df, test_data[, 1:20])
+
+ggplot(results_df, aes(x = X18, y = X20, color = Correct, shape = Actual)) +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Misclassifications by X18 and X20",
+       color = "Correctly Classified",
+       shape = "Actual Class")
+```
+```{r}
+
+results_df <- data.frame(
+  Actual = test_data$label,
+  Predicted = predictions,
+  Correct = test_data$label == predictions
+)
+
+results_df <- cbind(results_df, test_data[, 1:20])
+
+ggplot(results_df, aes(x = X17, y = X19, color = Correct, shape = Actual)) +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "Misclassifications by X17 and X19",
+       color = "Correctly Classified",
+       shape = "Actual Class")
+```
+
+
+```{r}
+library(pROC)
+
+probabilities <- predict(model, test_data, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
+probabilities
+```
+```{r}
+is_class_d <- ifelse(test_data$label =="D", 1, 0)
+
+class_d_probs <- as.data.frame(probabilities)$D
+
+# these produce a 1 and 0 for true and false for the actual value of class D for each row in data, and then the probability of each row being class d according to the model
+
+```
+
+
+```{r}
+
+roc <- roc(is_class_d, class_d_probs)
+auc_value <- auc(roc)
+
+roc
+auc_value
+```
+```{r}
+
+plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
+     col = "blue", lwd = 2, 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)")
+
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+
+
+### feature selection
+
+first lets try removing X17, X19 and X20
+
+```{r}
+
+train_data_2 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+test_data_2 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+
+model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_2)
+coef_matrix <- coef(model)
+cat("\n","coef matrix", "\n")
+print(coef_matrix)
+
+std_errors <- summary(model)$standard.errors
+cat("\n","std errors", "\n")
+print(std_errors)
+
+z_scores <- coef_matrix/std_errors
+cat("\n","z score", "\n")
+print(z_scores)
+
+p_values <- 2 * (1 - pnorm(abs(z_scores)))
+cat("\n","p values", "\n")
+print(p_values)
+cat("\n\n")
+```
+
+```{r}
+predictions <- predict(model, test_data_2, type = "class") # using type-class gives a prediction of the label value directly
+predictions
+```
+
+```{r}
+conf_matrix = confusionMatrix(predictions, test_data_2$label)
+conf_matrix
+
+
+```
+
+
+```{r}
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+
+```
+
+all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable. 
+
+
+
+```{r}
+library(pROC)
+
+probabilities <- predict(model, test_data_2, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
+
+```
+
+```{r}
+is_class_d <- ifelse(test_data_2$label =="D", 1, 0)
+
+class_d_probs <- as.data.frame(probabilities)$D
+
+# these produce a 1 and 0 for true and false for the actual value of class D for each row in data, and then the probability of each row being class d according to the model
+
+```
+
+
+```{r}
+
+roc <- roc(is_class_d, class_d_probs)
+auc_value <- auc(roc)
+
+roc
+auc_value
+```
+```{r}
+
+plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
+     col = "blue", lwd = 2, 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)")
+
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+basically the same - all the change is a rounding error. 
+
+
+This is good news, but we were looking to specifically increase the balanced accuracy of Class D and the overall f1 score, which we did not achieve. 
+
+
+
+
+
+
+next lets try removing X9. X9 was a very important feature, but it had a low coefficient for D, meaning it does not help us descriminate Class A from Class D. Since we know it has correlations with X7 an X8, we can hope that we loose no information from the system for predicting class B and C, but that the relative coeffiecints for class D are increased by removing it.
+
+```{r}
+
+train_data_3 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+test_data_3 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+
+model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_3)
+coef_matrix <- coef(model)
+cat("\n","coef matrix", "\n")
+print(coef_matrix)
+
+std_errors <- summary(model)$standard.errors
+cat("\n","std errors", "\n")
+print(std_errors)
+
+z_scores <- coef_matrix/std_errors
+cat("\n","z score", "\n")
+print(z_scores)
+
+p_values <- 2 * (1 - pnorm(abs(z_scores)))
+cat("\n","p values", "\n")
+print(p_values)
+cat("\n\n")
+```
+
+```{r}
+predictions <- predict(model, test_data_3, type = "class") # using type-class gives a prediction of the label value directly
+predictions
+```
+
+```{r}
+conf_matrix = confusionMatrix(predictions, test_data_3$label)
+conf_matrix
+
+
+```
+
+
+```{r}
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+
+```
+
+all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable. 
+
+
+
+```{r}
+library(pROC)
+
+probabilities <- predict(model, test_data_3, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
+
+```
+
+```{r}
+is_class_d <- ifelse(test_data_3$label =="D", 1, 0)
+
+class_d_probs <- as.data.frame(probabilities)$D
+
+# these produce a 1 and 0 for true and false for the actual value of class D for each row in data, and then the probability of each row being class d according to the model
+
+```
+
+
+```{r}
+
+roc <- roc(is_class_d, class_d_probs)
+auc_value <- auc(roc)
+
+roc
+auc_value
+```
+```{r}
+
+plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
+     col = "blue", lwd = 2, 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)")
+
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+almost no change, although overall accuracy has dropped by a couple of points.
+
+
+
+in the last model, we saw that X6 and X7 both ended up with very low coefficients for D. lets take this experiement further by removing them as well
+
+```{r}
+
+train_data_4 <- train_data %>% select(X1, X2, X3, X4, X5, X8, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+test_data_4 <- test_data %>% select(X1, X2, X3, X4, X5, X8, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+
+model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_4)
+coef_matrix <- coef(model)
+cat("\n","coef matrix", "\n")
+print(coef_matrix)
+
+std_errors <- summary(model)$standard.errors
+cat("\n","std errors", "\n")
+print(std_errors)
+
+z_scores <- coef_matrix/std_errors
+cat("\n","z score", "\n")
+print(z_scores)
+
+p_values <- 2 * (1 - pnorm(abs(z_scores)))
+cat("\n","p values", "\n")
+print(p_values)
+cat("\n\n")
+```
+
+```{r}
+predictions <- predict(model, test_data_4, type = "class") # using type-class gives a prediction of the label value directly
+predictions
+```
+
+```{r}
+conf_matrix = confusionMatrix(predictions, test_data_4$label)
+conf_matrix
+
+
+```
+
+
+```{r}
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+
+```
+
+accuracy has come down significantly, by almost ten percent in total now. Interestingly, the balanced accuracy of class D was the least effected, but the hit to the overall performance of the model including the f1 score within D means that this is made the model much worse.
+
+We should try a different approach than just removing specific columns. Our options are regularization and weighting. Regularization would mean applying the decay coefficents similar to how we did in ridge and laso linear regression. This is good for preventing overfitting. 
+
+First, we will try weighted logistic regression. I don't expect this to help very much since our classes are already very balanced - each class is about a quarter of the rows. But it should be easy to implement and its worth a try
+
+```{r}
+
+
+class_weights <- train_data %>%
+  count(label) %>%
+  mutate(weight = 1/n, # n just always gets the value for number of observations
+         weight = weight/sum(weight) * n()) # regularize using the mean
+class_weights
+```
+```{r}
+
+weighted_model <- multinom(label ~ ., data = train_data, 
+                          weights = weights,
+                          trace = FALSE)
+
+
+weighted_pred <- predict(weighted_model, test_data)
+confusionMatrix(weighted_pred, test_data$label)
+
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+```
+looks very similar to our basic model, if anything slightly worse
+
+We didn't really expect weighting to improve the model much since our biggest problem is the overlap between A and D, and weighting wont ever help seperate the feature spaces, only scale them. The slight decrease in performance could have been caused by giving a slightly higher weight to part of the dataset which increases the risk of overfitting - its a bit like reducing the size of the data since you are giving more importance to a smaller part of it. 
+
+
+Next, we are going to try regularization. I can't find a function in r that just does ridge logistic regression, but there is a decay parameter for the multinom() function and we can experiment with different values.
+
+Regularization will help us control the feature importance. Its a more systematic way of doing it than just removing features like we did earlier. I think this is a more promising approach - we want to find a way of boosting the feature importance of columns like X11 which is good at descriminating A from D according to the coefficients in all the previous models. Regularization will also resist overfitting, so we are unlikely to see a decrease in performance like we did with weighting, even if it doesn't improve the model much.
+
+```{r}
+# cant find a ridge function for logistic regression, so we will just try some values and see what magnitude seems to work 
+# we can then create a finer grain list to pick a best value if the first attempt is promising
+
+decay_values <- list(0.001, 0.01, 0.1, 0.5, 1, 2, 10)
+
+
+
+for (i in decay_values) {
+  
+  cat("\n\n\n\n\n", "Decay value =", i, "\n\n")
+  model <- multinom(label ~ ., data = train_data, 
+                       decay = i, 
+                       trace = FALSE)
+  
+  predictions <- predict(model, test_data)
+  conf_matrix <- confusionMatrix(predictions, test_data$label)
+  print(conf_matrix)
+ 
+  class_metrics <- conf_matrix$byClass
+
+  for (class in 1:nrow(class_metrics)) {
+    cat("\nClass:", rownames(class_metrics)[class], "\n")
+    cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+    cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+    cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+    cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+  }
+  
+  
+}
+
+
+
+```
+looks like the model is pretty stable since the accuracy doesnt decrease very fast, staying the same at low values and only dropping by 1% at the highest value of 10. But it doesn't improve our models ability to decern class D from the rest. At this point, I think its safe to say that the preprocessing of the data means that the logistic model is performing near its highest potential, and the inprecision of class D is due to the inherent properties of the data and limitations of logistic regression. This model could be good enough for a practical application already with a fairly high overall accuracy of ~85% as long as the risk of confusing A with D did not have significant implications. 
+
+For example, with this being biological data, the class labels could represent a physical characteristic like the shape of an ear lobe, and then there is very little risk involved with using a model that might confuse two categories. However, the labels could also be disease risks, with A being lowest risk and D being highest risk, and then this model would not be at all appropriate for use.
+
+We will leave logistic regression now and move onto other modelling techniques to see if they can perform better.
