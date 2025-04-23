@@ -55,36 +55,37 @@ prop.table(table(test_data$label))
 ### simple models
 
 We will start by produceing a few simple univariate models with some of the more interesting columns we identified during eda. Since there are four labels we are predicting, we need to use multinom() instead of multinom()
+
 ```{r}
 library(nnet)
 ```
 
-
-```{r} 
+```{r}
 X8_model <- nnet::multinom( label ~ X8, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X7_model <- multinom( label ~ X7, data = train_data) 
 summary(model)$coef
 ```
-```{r} 
+
+```{r}
 X9_model <- multinom( label ~ X9, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X3_model <- multinom( label ~ X3, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X2_model <- multinom( label ~ X2, data = train_data) 
 summary(model)$coef
 ```
 
-unfortunetly, mulinom() doesn't give us as helpful a summary as glm() does. 
+unfortunetly, mulinom() doesn't give us as helpful a summary as glm() does.
 
 ```{r}
 for (model in list(X9_model, X8_model, X7_model, X3_model, X2_model) ) {
@@ -110,25 +111,26 @@ for (model in list(X9_model, X8_model, X7_model, X3_model, X2_model) ) {
 
 now lets look at some columns that we expect to perform poorly
 
-```{r} 
+```{r}
 X17_model <- multinom( label ~ X17, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X18_model <- multinom( label ~ X18, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X19_model <- multinom( label ~ X19, data = train_data) 
 summary(model)$coef
 ```
 
-```{r} 
+```{r}
 X20_model <- multinom( label ~ X20, data = train_data) 
 summary(model)$coef
 ```
+
 ```{r}
 for (model in list(X17_model, X18_model, X19_model, X20_model) ) {
   cat("\n\n\n") # print doesnt print new lines. what a silly programming language
@@ -150,8 +152,8 @@ for (model in list(X17_model, X18_model, X19_model, X20_model) ) {
   cat("\n\n")
 }
 ```
-These coefficeints are all closer to 0 on average than the first four, but I've learned that the coefficient for X18 is higher than I would have expected. When it comes to feature selection, it may be that incluing only X18 out of these four is a good option since the four features correlate highly with one another and X18 is the one that seems to have most predictive power.
-We also know that X9, X8 and X7 are correlated with one another. Selecting features out of these will be trickier as there was not one that performed far better that the others - they seem to have stronger correlations each with different labels i.e. X9 looks like it will decern strongly between label C and other labels, but barely at all between label A and label D. Trial and error will be the best approach for choosing out of these features, or if theres time we could try doing something like reducing dimensionality of these 3 column by looking for hidden underlying factors.
+
+These coefficeints are all closer to 0 on average than the first four, but I've learned that the coefficient for X18 is higher than I would have expected. When it comes to feature selection, it may be that incluing only X18 out of these four is a good option since the four features correlate highly with one another and X18 is the one that seems to have most predictive power. We also know that X9, X8 and X7 are correlated with one another. Selecting features out of these will be trickier as there was not one that performed far better that the others - they seem to have stronger correlations each with different labels i.e. X9 looks like it will decern strongly between label C and other labels, but barely at all between label A and label D. Trial and error will be the best approach for choosing out of these features, or if theres time we could try doing something like reducing dimensionality of these 3 column by looking for hidden underlying factors.
 
 Now we will build a logistic model with all features and see how it performs.
 
@@ -190,10 +192,9 @@ conf_matrix
 
 ```
 
-a 85% accuracy with a low p value is pretty good for our first model. We can see we were good at predicting classes B and C, and not bad at A. Class D has a lot of misclassifications. The model seems to particularly struggle at discerning classes A and D, where each has a high (relatively) rate of being misclassified as the other. 
+a 85% accuracy with a low p value is pretty good for our first model. We can see we were good at predicting classes B and C, and not bad at A. Class D has a lot of misclassifications. The model seems to particularly struggle at discerning classes A and D, where each has a high (relatively) rate of being misclassified as the other.
 
 lets use this output to calculate precision recall and f1 score:
-
 
 ```{r}
 class_metrics <- conf_matrix$byClass
@@ -210,9 +211,7 @@ for (class in 1:nrow(class_metrics)) {
 
 This backs up our initial observations.
 
-
 To improve our model, we could try removing some features that have low predictive power for class D in order to boost the feature importance of ones that do. first we need to evaluate how good each feature is at discriminating the classes
-
 
 ```{r}
 
@@ -231,6 +230,7 @@ ggplot(results_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) +
        color = "Correctly Classified",
        shape = "Actual Class")
 ```
+
 ```{r}
 
 results_df <- data.frame(
@@ -248,6 +248,7 @@ ggplot(results_df, aes(x = X9, y = X8, color = Correct, shape = Actual)) +
        color = "Correctly Classified",
        shape = "Actual Class")
 ```
+
 ```{r}
 
 results_df <- data.frame(
@@ -283,6 +284,7 @@ ggplot(results_df, aes(x = X18, y = X20, color = Correct, shape = Actual)) +
        color = "Correctly Classified",
        shape = "Actual Class")
 ```
+
 ```{r}
 
 results_df <- data.frame(
@@ -301,13 +303,13 @@ ggplot(results_df, aes(x = X17, y = X19, color = Correct, shape = Actual)) +
        shape = "Actual Class")
 ```
 
-
 ```{r}
 library(pROC)
 
 probabilities <- predict(model, test_data, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
 probabilities
 ```
+
 ```{r}
 is_class_d <- ifelse(test_data$label =="D", 1, 0)
 
@@ -317,7 +319,6 @@ class_d_probs <- as.data.frame(probabilities)$D
 
 ```
 
-
 ```{r}
 
 roc <- roc(is_class_d, class_d_probs)
@@ -326,6 +327,7 @@ auc_value <- auc(roc)
 roc
 auc_value
 ```
+
 ```{r}
 
 plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
@@ -336,7 +338,6 @@ plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3),
 
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
-
 
 ### feature selection
 
@@ -380,7 +381,6 @@ conf_matrix
 
 ```
 
-
 ```{r}
 class_metrics <- conf_matrix$byClass
 
@@ -394,9 +394,7 @@ for (class in 1:nrow(class_metrics)) {
 
 ```
 
-all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable. 
-
-
+all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable.
 
 ```{r}
 library(pROC)
@@ -414,7 +412,6 @@ class_d_probs <- as.data.frame(probabilities)$D
 
 ```
 
-
 ```{r}
 
 roc <- roc(is_class_d, class_d_probs)
@@ -423,6 +420,7 @@ auc_value <- auc(roc)
 roc
 auc_value
 ```
+
 ```{r}
 
 plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
@@ -433,15 +431,10 @@ plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3),
 
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
-basically the same - all the change is a rounding error. 
 
+basically the same - all the change is a rounding error.
 
-This is good news, but we were looking to specifically increase the balanced accuracy of Class D and the overall f1 score, which we did not achieve. 
-
-
-
-
-
+This is good news, but we were looking to specifically increase the balanced accuracy of Class D and the overall f1 score, which we did not achieve.
 
 next lets try removing X9. X9 was a very important feature, but it had a low coefficient for D, meaning it does not help us descriminate Class A from Class D. Since we know it has correlations with X7 an X8, we can hope that we loose no information from the system for predicting class B and C, but that the relative coeffiecints for class D are increased by removing it.
 
@@ -483,7 +476,6 @@ conf_matrix
 
 ```
 
-
 ```{r}
 class_metrics <- conf_matrix$byClass
 
@@ -497,9 +489,7 @@ for (class in 1:nrow(class_metrics)) {
 
 ```
 
-all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable. 
-
-
+all of these values are ever so slightly down. If we were going to use logistic regression to predict more data in a production setting or further research, we may choose this model since the metrics have not decreased significantly, and removing the correlated columns could make the model more generalizable.
 
 ```{r}
 library(pROC)
@@ -517,7 +507,6 @@ class_d_probs <- as.data.frame(probabilities)$D
 
 ```
 
-
 ```{r}
 
 roc <- roc(is_class_d, class_d_probs)
@@ -526,6 +515,7 @@ auc_value <- auc(roc)
 roc
 auc_value
 ```
+
 ```{r}
 
 plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
@@ -536,9 +526,8 @@ plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3),
 
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
+
 almost no change, although overall accuracy has dropped by a couple of points.
-
-
 
 in the last model, we saw that X6 and X7 both ended up with very low coefficients for D. lets take this experiement further by removing them as well
 
@@ -580,7 +569,6 @@ conf_matrix
 
 ```
 
-
 ```{r}
 class_metrics <- conf_matrix$byClass
 
@@ -596,7 +584,7 @@ for (class in 1:nrow(class_metrics)) {
 
 accuracy has come down significantly, by almost ten percent in total now. Interestingly, the balanced accuracy of class D was the least effected, but the hit to the overall performance of the model including the f1 score within D means that this is made the model much worse.
 
-We should try a different approach than just removing specific columns. Our options are regularization and weighting. Regularization would mean applying the decay coefficents similar to how we did in ridge and laso linear regression. This is good for preventing overfitting. 
+We should try a different approach than just removing specific columns. Our options are regularization and weighting. Regularization would mean applying the decay coefficents similar to how we did in ridge and laso linear regression. This is good for preventing overfitting.
 
 First, we will try weighted logistic regression. I don't expect this to help very much since our classes are already very balanced - each class is about a quarter of the rows. But it should be easy to implement and its worth a try
 
@@ -609,6 +597,7 @@ class_weights <- train_data %>%
          weight = weight/sum(weight) * n()) # regularize using the mean
 class_weights
 ```
+
 ```{r}
 
 weighted_model <- multinom(label ~ ., data = train_data, 
@@ -629,10 +618,10 @@ for (class in 1:nrow(class_metrics)) {
   cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
 }
 ```
+
 looks very similar to our basic model, if anything slightly worse
 
-We didn't really expect weighting to improve the model much since our biggest problem is the overlap between A and D, and weighting wont ever help seperate the feature spaces, only scale them. The slight decrease in performance could have been caused by giving a slightly higher weight to part of the dataset which increases the risk of overfitting - its a bit like reducing the size of the data since you are giving more importance to a smaller part of it. 
-
+We didn't really expect weighting to improve the model much since our biggest problem is the overlap between A and D, and weighting wont ever help seperate the feature spaces, only scale them. The slight decrease in performance could have been caused by giving a slightly higher weight to part of the dataset which increases the risk of overfitting - its a bit like reducing the size of the data since you are giving more importance to a smaller part of it.
 
 Next, we are going to try regularization. I can't find a function in r that just does ridge logistic regression, but there is a decay parameter for the multinom() function and we can experiment with different values.
 
@@ -673,7 +662,8 @@ for (i in decay_values) {
 
 
 ```
-looks like the model is pretty stable since the accuracy doesnt decrease very fast, staying the same at low values and only dropping by 1% at the highest value of 10. But it doesn't improve our models ability to decern class D from the rest. At this point, I think its safe to say that the preprocessing of the data means that the logistic model is performing near its highest potential, and the inprecision of class D is due to the inherent properties of the data and limitations of logistic regression. This model could be good enough for a practical application already with a fairly high overall accuracy of ~85% as long as the risk of confusing A with D did not have significant implications. 
+
+looks like the model is pretty stable since the accuracy doesnt decrease very fast, staying the same at low values and only dropping by 1% at the highest value of 10. But it doesn't improve our models ability to decern class D from the rest. At this point, I think its safe to say that the preprocessing of the data means that the logistic model is performing near its highest potential, and the inprecision of class D is due to the inherent properties of the data and limitations of logistic regression. This model could be good enough for a practical application already with a fairly high overall accuracy of \~85% as long as the risk of confusing A with D did not have significant implications.
 
 For example, with this being biological data, the class labels could represent a physical characteristic like the shape of an ear lobe, and then there is very little risk involved with using a model that might confuse two categories. However, the labels could also be disease risks, with A being lowest risk and D being highest risk, and then this model would not be at all appropriate for use.
 
