@@ -1,0 +1,171 @@
+---
+title: "agg_heirarchical_clustering"
+author: "Daniel Hill"
+format: pdf
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+
+in this doc we are going to implement our first usupervised model. I have chosen agglomerative heirarchical clustering because I think it will be interesting to use a model where the number of clusters is not specified and let the natural structure of the data reveal itself. 
+
+Biological data is often naturally heirarchical, for example animals can be classified by deviding them into first kingdoms, then families of species, and finally species and sub-species.
+
+Although we don't know the exact meaning of each feature in our data, we know that it is biological in origin, perhaps gene expressions or environmental factors. This means that there might be a heirarchy of classes in our data. 
+
+Using this method without specifying that there are four values for label might reveal that some of the labels have a strong tendency to form sub classes, or that there is little structure in the data to justify asserting there are four classes. These would both be interesting finds.
+
+It is also a model that handles the feature correlation well, which allows us to keep in all the collumns that correlate like X7, X8, and X9. 
+
+## Setting up
+
+```{r}
+library(tidyverse)  
+library(cluster)   
+library(factoextra)   
+library(dendextend) 
+library(circlize)
+library(hopkins)       
+library(fpc)            
+library(NbClust)    
+```
+
+
+```{r}
+set.seed(2626)
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label)
+head(data)
+
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>% 
+  createDataPartition(p = 0.8, list = FALSE) # create 80:20 split for train:test
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+
+# check class distribution are similar in both splits
+prop.table(table(train_data$label))
+prop.table(table(test_data$label))
+
+# for unsupervised learning we need to remove the target variable 
+data_labels <- data %>% select(label) %>% mutate(label = as.factor(label))
+data_features <- data %>% select(-label)
+
+# we might not need test-train split, we can train on all data and test with the original labels. but ill make them now in case
+training_labels <- train_data %>% select(label) %>% mutate(label = as.factor(label))
+training_features <- train_data %>% select(-label)
+
+test_labels <- train_data %>% select(label) %>% mutate(label = as.factor(label))
+test_features <- test_data %>% select(-label)
+
+
+```
+
+
+## Extra Exploration
+
+In the initial exploritory data analysis, we discovered that the hopkin's statistic for the dataset was very high, over 0.95 which indicates that the data has a very high clustering tendency. But we also saw through PCA plots that there seemed to be considerable overlap in these clusters, and we have since learned from implementing logistic regression, random forest and SVM that the class D cluster in particular is difficult to correctly classify. 
+
+So, before we start modelling, I would like to do some extra exploration. I would like to create a binary Class D vs Rest labelled dataset and calculate the hopkins statistic of it to find out more about its structure. Then, i could calculate the hopkins statistic of each label seperately to see if any might have viable sub classes.
+
+```{r}
+
+binary_data <- data %>% mutate(label = factor( ifelse(label == "D", 1, 0), levels = c(0, 1) ))
+hopkins_stat <- hopkins(binary_data, m = nrow(binary_data)/10)
+hopkins_stat
+```
+```{r}
+library(clustertend)
+library(factoextra)
+get_clust_tendency(data_features, 2, graph=TRUE, gradient=list(low="red", mid="white", high="blue"))
+```
+
+```{r}
+library(factoextra)
+fviz_dist(dist(data_features), show_labels = FALSE) +
+  labs(title = "Dissimilarity Matrix Visualization")
+```
+think these are exactly the same graph.
+
+Once we remove the label, the hopkins stat is much lower - closer to 0.5 than to 1.0 . This suggests that the underlying data structure is closer to random than perfectly clustered.
+
+```{r}
+fviz_nbclust(data_features, hcut, method = "silhouette", k.max = 10) +
+  labs(title = "Optimal Number of Clusters - Silhouette Method")
+```
+This makes some sense, we know the classes overlap so im not suprised to see the optimal method be below four (num of labels in original data). I did expect 3 to be highest since we got good seperation of classes A, B, and C with supervised methods. But we might find that B and C appear to be subclasses of one larger cluster which would be interesting (we already think A and D overlap because of how many class D rows were misclassified as A, and in the best models the only times A was misclassified was for D)
+
+
+```{r}
+fviz_nbclust(data_features, hcut, method = "gap_stat", k.max = 10, nboot = 50) +
+  labs(title = "Optimal Number of Clusters - Gap Statistic")
+```
+weird that this is so high - i dont really know how to interpret that...
+why does it draw the line at 8 when the data point is still higher at 9 and 10?
+
+```{r}
+fviz_nbclust(data_features, hcut, method = "wss", k.max = 10) +
+  labs(title = "Optimal Number of Clusters - Elbow Method")
+```
+Not a super clear elbow on this graph, could arguable pick any number from two to eight...
+
+```{r}
+
+```
+
+
+
+
+## Exploring linking metrics
+
+we willl try different linking methods and compare the results. We will use euclidean distance as the similarity metric for all the approaches to begin with. Later we can try different similarity metrics like manhatten distance or cosine similarity. 
+
+
+```{r}
+
+dist_matrix <- dist(data_features, method = "euclidean")
+
+
+hc_complete <- hclust(dist_matrix, method = "complete")
+hc_average <- hclust(dist_matrix, method = "average")
+hc_single <- hclust(dist_matrix, method = "single")
+hc_ward <- hclust(dist_matrix, method = "ward.D2")
+```
+
+```{r}
+library(ggdendro)
+
+ggdendrogram(hc_complete)
+
+```
+```{r}
+dend_complete <- as.dendrogram(hc_complete)
+plot(dend_complete)
+```
+
+```{r}
+branch_colours <- color_branches(dend_complete, k=4, groubLabels=data_labels)
+
+labels(dend_complete) <- paste(as.character(data_labels)[order.dendrogram(dend)],
+                           "(",labels(dend),")", 
+                           sep = "")
+```
+
+
+
+
+
+
+

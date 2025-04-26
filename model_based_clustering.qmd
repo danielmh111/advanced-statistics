@@ -1,0 +1,68 @@
+---
+title: "model_based_clustering"
+author: "Daniel Hill"
+format: pdf
+editor: visual
+---
+
+# Model Based Clustering
+
+So far while working with this data set, we have struggled to seperate class D, and by plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data. 
+
+Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions. I think it might have a good chance of performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D. Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters. This is important because we have seen that in some dimensions our classes produce fairly elipsoidal clusters. 
+
+## Setting up
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+```{r}
+library(tidyverse)
+library(mclust)  # For model based clustering
+library(factoextra)  # Clustering Visualization
+library(GGally)  # For visualization
+library(ggpubr)   # For visualization
+```
+
+```{r}
+set.seed(2626)
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label)
+head(data)
+
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>% 
+  createDataPartition(p = 0.8, list = FALSE) # create 80:20 split for train:test
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+
+# check class distribution are similar in both splits
+prop.table(table(train_data$label))
+prop.table(table(test_data$label))
+
+# for unsupervised learning we need to remove the target variable 
+data_labels <- data %>% select(label) %>% mutate(label = as.factor(label))
+data_features <- data %>% select(-label)
+
+
+# we might not need test-train split, we can train on all data and test with the original labels. but ill make them now in case
+training_labels <- train_data %>% select(label) %>% mutate(label = as.factor(label))
+training_features <- train_data %>% select(-label)
+
+test_labels <- train_data %>% select(label) %>% mutate(label = as.factor(label))
+test_features <- test_data %>% select(-label)
+
+```
+
+
+
