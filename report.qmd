@@ -64,16 +64,18 @@ library(randomForest)
 ```
 
 # Introduction
+This report takes a moderately sized biological dataset containing 3000 observations, where each observation having 20 numeric varables and one catagorical label. These data are explored thoroughly before being used to train and test an array of statistical modelling techniques. 
 
-this is a section where i write the introduction. 
+This is an interesting project because the origin and meaning of the variables in the data are completely unknown - an unusual scenario in the data science field, where usually it is the domain knowledge and problem context that inform the selection and implementation of statistical methods. Here, with this relationship reversed, algorithms have been chosen so that the evaluation of their performance can attempt to uncoverthe underlying biological significance of the variables.
 
+Achieving meaningful results in this task shows the importance of supervised and unsupervised learning to this field, where classification algorithms can build valuable models that have high impact on society such as disease diagnosis models, and unsupervised learning techniques can create breakthoughs in identifying clusters of data that lead to new discoveries and classifications.
 
 # Methods
 
 ## Data Description
-20 features, a label with four catagorical classes. two groups of correlated features. Outliers removed using z score method. one feature transformed using logarithm. All features scaled and centered. All features numeric. 
+Each of the 3000 observations has 20 numeric features and a label placing it in one of four catagorical classes. Though exploritory data analysis, two groups of correlated features were identified. Outliers were identified and removed using z score method. One feature transformed using logarithm to create a more normal distribution to improve the performance of models. All features were scaled and centered. After the preprocessing of the data, 2776 usable observations remained.
 
-Bootstrapping was used to create a larger dataset.
+Bootstrap sampling was used to create a larger dataset so that the performance of the models could be compared between the original and bootstrapped data.
 
 
 ## Exploratory Data Analysis Approach
@@ -123,6 +125,8 @@ desc %>%
   )
 ```
 
+This description of the predictive features shows the range of scales, ranging by and order of magnitude. Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed. 
+
 ```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with catagorical labels*"}
 one_hot_data <- model.matrix(~ label - 1, data = data)
 one_hot_data <- data %>%
@@ -158,7 +162,13 @@ ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
   ) +
   coord_fixed()
 ```
+Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20. Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicolinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms. 
 
+The difference between these two group is that while X7, X8, and X9 are three features with some of the strongest correlations with the label values, all of X17 to X20 are features without significant correlations. This would lead us to believe that X17 - X20 have low predictive power in classification that aim to predict the class label and so removing them entirely would be a justifyable approach. 
+
+Among the other columns, we see that there are definitly some columns with stronger correlations than others.
+
+To produce the correlation matrix, the four catagorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
 
 ```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*"}
 data_long <- drop_na(data) %>%
@@ -198,6 +208,9 @@ ggplot(data_long, aes(x = value, fill = dist_group)) +
   )
 
 ```
+The majority of the twenty predictive variables appeared to follow a normal distribution. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance. With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modelling.
+
+
 ```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*"}
 data_clean <- data %>% drop_na()
 clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
@@ -252,6 +265,9 @@ boxplot <- ggplot( boxplot_data,  aes(label, Value, colour=label)  ) +
 
 boxplot
 ```
+Across the entire dataset, the distribution of labels is uniform, with roughly on quarter of the observations falling into each category. 
+
+When the distribution of each feature is observed by class label, we see that some features have significantly different characteristics for each class. In the figure, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives us more insight into which features will be important for building effective models.
 
 
 ```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of catagorical classes*"}
@@ -275,6 +291,14 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
   geom_density2d(alpha=0.75)
     
 ```
+It is important that we learn about the structure of the underlying data in order to understand our chances of sucess with unsupervised methods where we do not have the value of the class label to train the model. Using Principle Componant Analysis, we can capture most of the information in the system in one scatter plot. This shows us that there is definitly some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three. 
+
+The seperation of the first three classes suggests that there is information in the features that allow the statistical models to decern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
+
+The fact that the three classes that are distinct are displaced along the second principle componant and not the first principle component means that it is the dimensions with less variation that distinguish them. It would be easier to seperate the groups with predictive models if they were offset along the first principle conmponent.
+
+To learn more about the underlying structure of the dataset, the clustering tendency can be examined by calculating the Hopkins statistic, where a score close to 1 indicates strong clustering tenency, a score of 0.5 indicates random distribution of occurences, and 0 a uniform distribution. 
+
 
 ```{r hopkins}
 data_clean <- read_csv("data_clean.csv") %>% mutate(label = as.factor(label))
@@ -357,10 +381,11 @@ hopkins_table <- df %>%
 hopkins_table
 ```
 
+We can see there is a very high clustering tendency for various treatments of the data. The statistic remains high when the label is removed from the feature set. This is promising for persuing unsupervised approaches, since it confirms that the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If we saw the score drop when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
 
+Similarly, we see that the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots. This means that even the features with very little correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models. 
 
-
-
+Overall, we see from exploritory data analysis that this data contains high amounts of information usable for predictive modelling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that may prevent models from performing well.   
 
 ## Supervised Learning Methods
 
