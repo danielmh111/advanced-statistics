@@ -35,7 +35,11 @@ include-in-header:
     \predate{\begin{center}}
     \postdate{\end{center}}
 ---
+
+
 \newpage
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -48,6 +52,7 @@ knitr::opts_chunk$set(
   out.width = "80%"
 )
 ```
+
 ```{r}
 library(tidyverse)
 library(carat)
@@ -57,6 +62,8 @@ library(reshape2)
 library(viridis)
 library(hopkins)
 ```
+
+
 
 # Introduction
 
@@ -74,6 +81,8 @@ Bootstrapping was used to create a larger dataset.
 ## Exploratory Data Analysis Approach
 
 find distributions within each feature, look for correlations between features, scatter between plots that features that have high correlation to the catagorical label or another feature, use PCA to visualize all data together, calculate hopkins statistic to determine the clustering tendency of the data
+
+
 
 ```{r feature-data-descriptions}
 data <- read_csv("Data(2).csv")
@@ -154,7 +163,6 @@ ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
   coord_fixed()
 ```
 
-
 ```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*"}
 data_long <- drop_na(data) %>%
   select(- starts_with("label")) %>%
@@ -193,6 +201,7 @@ ggplot(data_long, aes(x = value, fill = dist_group)) +
   )
 
 ```
+
 ```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*"}
 data_clean <- data %>% drop_na()
 clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
@@ -247,7 +256,6 @@ boxplot <- ggplot( boxplot_data,  aes(label, Value, colour=label)  ) +
 
 boxplot
 ```
-
 
 ```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of catagorical classes*"}
 
@@ -357,6 +365,8 @@ hopkins_table
 
 
 
+
+
 ## Supervised Learning Methods
 
 logistic regression - including class weighting and L2 regularization, and feature selection. Random forest, including feature selection and tuning of mtry. SVM, with feature selection and tuning of kernel selection, gamma and cost parameters.
@@ -402,5 +412,6 @@ the final model had good overall accuracy but caution is advised when using a ml
 
 
 # References
+
 
 
