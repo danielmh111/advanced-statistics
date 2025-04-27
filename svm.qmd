@@ -23,7 +23,6 @@ In this document, I will implement support vector machine as the second supervis
 
 ## Setting up
 
-
 ```{r}
 library(tidyverse)
 library(e1071)      
@@ -39,7 +38,6 @@ data$label <- as.factor(data$label)
 
 head(data)
 ```
-
 
 ```{r}
 
@@ -74,7 +72,8 @@ svm_linear <- svm(
 summary(svm_linear)
 
 ```
-the support vectors are drawn from the edges of the 'envelope' that enclose each class to the decision boundary. So each one represents a point where the boundary is being defined. We can look at the total number of support vectors relative to our total number of data points, which is just under 3000. so 804/0.8*3000 = about a third of our data is being used to draw the decision boundary. 
+
+the support vectors are drawn from the edges of the 'envelope' that enclose each class to the decision boundary. So each one represents a point where the boundary is being defined. We can look at the total number of support vectors relative to our total number of data points, which is just under 3000. so 804/0.8\*3000 = about a third of our data is being used to draw the decision boundary.
 
 we can also notice the distribution of support vectors between classes - we know that the distribution of class labels is approximately uniform, but there are significantly more support vectors for class D than the others.
 
@@ -85,7 +84,6 @@ linear_predictions <- predict(svm_linear, test_data)
 conf_matrix <- confusionMatrix(linear_predictions, test_data$label)
 conf_matrix
 ```
-
 
 ```{r}
 
@@ -105,8 +103,6 @@ these results are slightly below the ones we got with logistic regression. Based
 The first thing will do is try some different kernals and see how they perform
 
 ## Exploring different kernels
-
-
 
 ```{r}
 
@@ -187,7 +183,6 @@ the polynomial kernels start overfitting pretty quickly as we increase the order
 
 lets move forward with the radial kernel and see if we can tune it for better results.
 
-
 ## Hyperparameter tuning
 
 Now, let's tune the hyperparameters for the radial kernel to optimize the model:
@@ -214,8 +209,8 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
-we can see that the model starts performing poorly quickly as the values get larger. So we will try again with smaller steps between 0 and 0.5
 
+we can see that the model starts performing poorly quickly as the values get larger. So we will try again with smaller steps between 0 and 0.5
 
 ```{r}
 
@@ -262,6 +257,7 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
+
 ```{r}
 
 
@@ -284,8 +280,6 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
-
-
 
 ```{r}
 
@@ -310,8 +304,6 @@ print(svm_tune)
 plot(svm_tune)
 ```
 
-
-
 ```{r}
 
 
@@ -334,7 +326,6 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
-
 
 ```{r}
 
@@ -381,6 +372,7 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
+
 ```{r}
 
 
@@ -450,7 +442,6 @@ print(svm_tune)
 plot(svm_tune)
 ```
 
-
 ```{r}
 
 
@@ -473,7 +464,6 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
-
 
 ```{r}
 
@@ -498,11 +488,9 @@ print(svm_tune)
 plot(svm_tune)
 ```
 
-
-At this point, I'm seeing that the variation due to cross validation instability is greater than the increases in accuracy and agreement that we get from continuing to refine the hyperparameters. 
+At this point, I'm seeing that the variation due to cross validation instability is greater than the increases in accuracy and agreement that we get from continuing to refine the hyperparameters.
 
 I am going to do another run with a higher number of folds and some repeats to try and get a more stable value. This is valuable because we want to find a parameter that performs well on repeated runs not just one specific run.
-
 
 ```{r}
 
@@ -528,7 +516,6 @@ print(svm_tune)
 plot(svm_tune)
 ```
 
-
 ```{r}
 # this will take forever, im leaving it running overnight
 
@@ -552,8 +539,6 @@ svm_tune <- train(
 print(svm_tune)
 plot(svm_tune)
 ```
-
-
 
 okay all of these are within 0.25% accuracy so i think we can take the highest value to use for training an optimized model
 
@@ -595,14 +580,12 @@ for (class in 1:nrow(final_class_metrics)) {
   cat("F1 Score:", round(final_class_metrics[class, "F1"], 4), "\n")
 }
 ```
+
 the final results aren't bad, better than logistic regression but not as good as the random forest. We still haven't found a model that is good at seperating class D. In production, we would probabaly try to find a one-vs-all approach for class D specifically, and use it in combination with a tuned random forest model.
-
-
 
 ## Feature selection for SVM
 
 like i did with other models, im going to look into if we can improve the model by selecting only the most important features based on our previous findings:
-
 
 ```{r}
 
@@ -640,7 +623,8 @@ for (class in 1:nrow(selected_metrics)) {
 }
 
 ```
-worse :shrug: 
+
+worse :shrug:
 
 ## analysis for Class D
 
@@ -674,11 +658,8 @@ one_class_conf_matrix
 
 
 ```
-By making the dataset binary we have made it unbalanced - there are now three times as many negative samples as positive samples. This means that the accuracy metric is less meaningful - its going to be higher just because the model now has a very high true negative rate from correctly identifying instances of B and C that aren't class D and this is larger than the false negative rate from misclassifying class D instances. However, despite the high accuracy metric achieved by this model, we can see by looking at the positive value reference column of the confusion matrix and the low specificity score that the model still struggles to correctly classify class D. 
 
-
-
-
+By making the dataset binary we have made it unbalanced - there are now three times as many negative samples as positive samples. This means that the accuracy metric is less meaningful - its going to be higher just because the model now has a very high true negative rate from correctly identifying instances of B and C that aren't class D and this is larger than the false negative rate from misclassifying class D instances. However, despite the high accuracy metric achieved by this model, we can see by looking at the positive value reference column of the confusion matrix and the low specificity score that the model still struggles to correctly classify class D.
 
 ```{r}
 
@@ -692,10 +673,6 @@ plot(roc_obj, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value,
      ylab = "True Positive Rate (Sensitivity)")
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
-
-
-
-
 
 ```{r}
 
@@ -770,7 +747,6 @@ bootstrap_conf_matrix <- confusionMatrix(bootstrap_predictions, bootstrap_test_d
 bootstrap_conf_matrix
 ```
 
-
 ```{r}
 
 cat("Original data accuracy:", round(final_conf_matrix$overall["Accuracy"], 4), "\n")
@@ -779,4 +755,3 @@ cat("Bootstrap data accuracy:", round(bootstrap_conf_matrix$overall["Accuracy"],
 
 
 ```
-

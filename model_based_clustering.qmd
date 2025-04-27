@@ -9,7 +9,7 @@ editor: visual
 
 So far while working with this data set, we have struggled to seperate class D, and by plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data. 
 
-Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions. I think it might have a good chance of performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D. Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters. This is important because we have seen that in some dimensions our classes produce fairly elipsoidal clusters. 
+Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions. I think it might have a good chance of performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D. Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters. This is important because we have seen that in some dimensions our classes produce fairly elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative heirarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not heirarchical in nature.   
 
 ## Setting up
 
@@ -27,6 +27,7 @@ knitr::opts_chunk$set(
 
 ```{r}
 library(tidyverse)
+library(caret)
 library(mclust)  # For model based clustering
 library(factoextra)  # Clustering Visualization
 library(GGally)  # For visualization
@@ -63,6 +64,471 @@ test_labels <- train_data %>% select(label) %>% mutate(label = as.factor(label))
 test_features <- test_data %>% select(-label)
 
 ```
+
+
+## init
+
+```{r}
+#Fit Model Based clustering
+fitM <- Mclust(data_features)
+
+#Choose the model
+BIC <- mclustBIC(data_features)
+plot(BIC)
+```
+VVE is the winner. Its promising (i think) that 4 clusters is the peak, since we know that there actually are four classes. In heirarchical clustering, we didn't see clear confirmation of four groups from the graphs using either the elbow method, gap method, or silloette method. 
+
+The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts. In this case, VVE is telling us that the model is predicting clusters that are elipsoids of equal orientation, but varying volume. This makes sense based on the PCA plots of the data where we see three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principle component)
+
+
+```{r}
+summary(fitM)
+```
+the distribution of observations in each cluster looks fairly uniform, which is promising because we know that the distribution of classes in the data is almost equal. 
+
+
+
+```{r}
+fviz_mclust(fitM, "classification", geom = "point", pointsize = 1.5, palette = "jco")
+```
+this looks really similar to our original PCA plot, with class A B and C seperated and class D overlapping all three!. 
+
+```{r}
+dens <- densityMclust(data_features)
+plot(dens, what = "density", type = "hdr", data = data_features)
+```
+what is this?
+
+
+```{r}
+fitM
+```
+```{r}
+# fitM$classification
+```
+```{r}
+# data_labels
+```
+
+```{r}
+
+results <- data_labels %>% mutate(prediction = fitM$classification) # %>% mutate(label = as.numeric(label))
+
+# results
+```
+
+
+we need to match the label to the most common prediction within that class so we can create a confusion matrix
+
+```{r}
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+modal_prediction <- results %>% group_by(label) %>% summarise(avg = Mode(as.numeric(prediction)))
+
+modal_prediction
+
+```
+
+so now in results, we need to map A to 2, B to 3, C to 1, and D to 4
+
+```{r}
+
+results <- results %>%
+  mutate(mapped_label = case_when(
+    label == "A" ~ 2,
+    label == "B" ~ 3, 
+    label == "C" ~ 1,
+    label == "D" ~ 4,
+    TRUE ~ NA_real_  # Default case
+  )) %>%
+  mutate(
+    prediction = as.factor(prediction)
+    , mapped_label = as.factor(mapped_label)
+  )
+
+# results 
+
+```
+
+```{r}
+
+conf_matrix = confusionMatrix(results$prediction, results$mapped_label)
+conf_matrix
+
+```
+
+We can be really pleased with the overall accuracy of 90.7%, but best of all this is already performing quite well at seperating class D. Although it is still the least well classified of any of the classes, the specificity of 93.4% and sensitivity of 81% are better than the results achieved using supervised learning. 
+
+## bootstrap data
+
+Now we are going to apply the same modelling to the bootstrap sampled data. 
+
+```{r}
+bootstrap_data <- read_csv("bootstrap_data.csv")
+bootstrap_features <- bootstrap_data %>% select(-label)
+bootstrap_labels <- bootstrap_data %>% select(label)
+
+
+fitM_bootstrap <- Mclust(bootstrap_features)
+
+```
+
+```{r}
+summary(fitM_bootstrap)
+```
+using the bootstrapped data, the optimal number of cluster has changed from four to eight. lets look at the BIC to learn more
+
+```{r}
+BIC_bootstrap <- mclustBIC(bootstrap_features)
+plot(BIC_bootstrap)
+```
+
+we can see that VVE is still the best, but its very close. We can also see that the results for 4, 5, 6, 7, and 8 components are extremely close. So these results are very similar to before with the original dataset, but just different enough to shift the number of clusters from four to eight, which is quite a big jump. 
+
+This must be a common problem with unsupervised learning, as in lots of cases we would not know that there are four label values as we do in this case. 
+
+
+```{r}
+fviz_mclust(fitM_bootstrap, "classification", geom = "point", pointsize = 1.5, palette = "jco")
+```
+
+Maybe the bootstrap data is splitting into more clusters because of the duplicates that bootstrapping causes. 
+
+We can try modelling the bootstrap data with the baysian information criteria as the non-bootstrap data.
+
+```{r}
+fitM_bootstrap_2 <- Mclust(bootstrap_features, x = BIC)
+summary(fitM_bootstrap_2)
+```
+
+The distribuition of observations within each cluster looks much more unbalanced than it did with the original data. 
+
+
+```{r}
+fviz_mclust(fitM_bootstrap_2, "classification", geom = "point", pointsize = 1.5, palette = "jco")
+```
+
+```{r}
+
+bootstrap_results <- bootstrap_labels %>% mutate(prediction = fitM_bootstrap_2$classification) # %>% mutate(label = as.numeric(label))
+
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+modal_bootstrap_prediction <- bootstrap_results %>% group_by(label) %>% summarise(avg = Mode(as.numeric(prediction)))
+
+modal_bootstrap_prediction
+
+```
+
+so now in results, we need to map A to 1, B to 3, C to 2, and D to 4
+
+```{r}
+
+bootstrap_results <- bootstrap_results %>%
+  mutate(mapped_label = case_when(
+    label == "A" ~ 1,
+    label == "B" ~ 3, 
+    label == "C" ~ 2,
+    label == "D" ~ 4,
+    TRUE ~ NA_real_  # Default case
+  )) %>%
+  mutate(
+    prediction = as.factor(prediction)
+    , mapped_label = as.factor(mapped_label)
+  )
+
+
+conf_matrix = confusionMatrix(bootstrap_results$prediction, bootstrap_results$mapped_label)
+conf_matrix
+
+```
+
+The accuracy is far worse with the bootstrap data than with the unboostrapped data. In fact, every metric is significantly worse, and i think this is the biggest decrease in performance we have seen for any model when going from the original to the bootstrapped data.
+
+Maybe the model based clustering performs particularly badly on the bootstrapped data because the algorithm makes certain assumptions about the distributions that create the data (a mixture of normal distributions) and when we bootstrap we are adding another factor into the probabilty distribution function that the data would be pulled from (something like this, needs rewording)
+
+
+## model tuning
+
+The model that was used already optimized itself for the number of clusters and the model selection using the BIC test, but there are still a couple of things we can try to improve performance further:
+  - Regularization: similar to the ridge technique we added to logistic regression. This is helpful at handling correlated features (X7,X8,X9 and X17 to X20)
+  - feature selection: we can try removing unimportant features to reduce the dimensionality of the data. 
+  - dimensionality reduction: we can use PCA or factor analysis to compress the data into fewer dimensions.
+  
+Other techniques that are available for tuning model based clustering are:
+  - initialization, where the initial classifications of the data points are given. This is usually done using domain knowledge of the data and since I don't have any I don't think initialization is a good option for trying to improve the model. 
+  - Noise handling: the gaussian mixture model is sensitive to outliers and noise because it uses the distribution of data within clusters to make predictions. However, I am confident that the outlier removal we did in preprocessing is sufficient and there are no further improvements to be gained by persuing this.
+  
+### regularization  
+  
+```{r}
+fitM_reg <- Mclust(data_features, G=4, 
+                  prior=priorControl(functionName="defaultPrior", shrinkage=0.1)) # start with moderate shrinkage value
+
+regularization_results <- data_labels %>% mutate(prediction = fitM_reg$classification) # %>% mutate(label = as.numeric(label))
+regularization_results
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+modal_regularization_prediction <- regularization_results %>% group_by(label) %>% summarise(avg = Mode(as.numeric(prediction)))
+
+modal_regularization_prediction
+
+```
+This is a problem - looks like there are more misclassifications than correct classifications between A and D since they both have the same modal cluster observations, and we know it should be about 50-50. I'm going to assume that A is 4 since we have seen A be well predicted so far in this project, and so the correct value to map to for D must be 1 by process of elimination
+
+```{r}
+
+# value might not reflect text above after rerunning code
+
+regularization_results <- regularization_results %>%
+  mutate(mapped_label = case_when(
+    label == "A" ~ 4,
+    label == "B" ~ 3, 
+    label == "C" ~ 1,
+    label == "D" ~ 1,
+    TRUE ~ NA_real_  # Default case
+  )) %>%
+  mutate(
+    prediction = as.factor(prediction)
+    , mapped_label = as.factor(mapped_label)
+  )
+
+
+regularization_results <- regularization_results %>%
+  mutate(
+    prediction = factor(prediction, levels = 1:4),
+    mapped_label = factor(mapped_label, levels = 1:4)
+  )
+
+
+conf_matrix = confusionMatrix(regularization_results$prediction, regularization_results$mapped_label)
+conf_matrix
+
+```
+
+```{r}
+reg_vs_std <- adjustedRandIndex(fitM$classification, fitM_reg$classification)
+std_vs_actual <- adjustedRandIndex(results$prediction, results$mapped_label)
+reg_vs_actual <- adjustedRandIndex(regularization_results$prediction, regularization_results$mapped_label)
+
+cat("\n", "ARI beteen data labels and original model:", std_vs_actual)
+cat("\n", "ARI between regularized and unregularized models:", reg_vs_std)
+cat("\n", "ARI beteen data labels and regularized model:", reg_vs_actual)
+```
+We can see that regularization has hindered the performance of the model. We can try again with a different shrinkage paramater value
+
+
+```{r}
+
+for (value in list(0.001, 0.01, 0.05, 0.1, 0.5) ) {
+  cat("\n\n\n\n", "shrinkage parameter = ", value)
+  model <- Mclust(data_features, G=4, 
+                  prior=priorControl(functionName="defaultPrior", shrinkage=value))
+  
+  model_results <- data_labels %>% mutate(prediction = fitM_reg$classification) # %>% mutate(label = as.numeric(label))
+
+
+  ari <- adjustedRandIndex(model$classification, data_labels$label)
+  cat("\n", "ARI = ", ari)
+  
+  
+}
+
+```
+
+There doesnt seem to be any values in this list that perform well.
+
+
+### dimensionality reduction
+
+for reducing the dimensionality of the feature set, I have chosen to use factor analysis. I think this is a good choice because factor analysis it is suited to handling the groups of correlated features that I spotted in eda, and because I know that the data is biological in origin. With biological data, there is often an underlying cause, like a gene expression, that can have many measurable implecations, like disease symptoms or physical characteristics. Because we know these mechanisms may exist in the source of our data, factor analysis is a good choice to reduce dimensions while preserving as much information as possible. 
+
+```{r}
+library(psych)
+
+
+scree_plot <- fa.parallel(data_features, fa = "fa", fm = "ml")
+scree_plot
+
+```
+here, the parallel function is suggesting that the optimum number of factors is 6. the function when using the maximum likelyhood method finds the number of factors where the value of the eigenvalue is above what would be expected by random chance. On the scree plot, six factors is the point where the blue line (actual data) intersects the red line (simulated random data).
+
+By looking at the actual values from the function, we can see that actually the first two factors contribute the most, with a sharp drop after that. So a dimensionality reduction to two factors could be a reasonable option. We can also see that the seventh and eigth eigenvalues are not much smaller than the sixth, so swapping some of the smaller factors could also be a justifyable experiment. 
+
+
+
+```{r}
+
+fa_result <- fa(data_features, 
+                nfactors = 6,  
+                rotate = "varimax",
+                fm = "ml")
+
+print(fa_result$loadings, cutoff = 0.3)  # only interested in the larger values, its easier to read the results 
+
+```
+
+this is exatly what I was looking for, the highly correlated features in the correlated groups are all heavily loaded to the factor. 
+
+```{r}
+
+factor_scores <- factor.scores(data_features, fa_result)$scores
+
+
+fitM_fa <- Mclust(factor_scores)
+summary(fitM_fa)
+```
+
+I notice two things, the model has changed from being VVE to VVV. This means that the orientation of the episoidal clusters is now variable as well as the size and shape of the clusters.
+
+
+```{r}
+
+fviz_mclust(fitM_fa, "classification", geom = "point", point_size = 1.5)
+```
+looks quite similar, except maybe cluster 2 and 4 are overlapping more than with the full feature set.
+
+
+
+```{r}
+fa_results <- data_labels %>% mutate(prediction = fitM_fa$classification) # %>% mutate(label = as.numeric(label))
+
+```
+
+
+we need to match the label to the most common prediction within that class so we can create a confusion matrix
+
+```{r}
+
+modal_prediction_fa <- fa_results %>% group_by(label) %>% summarise(avg = Mode(as.numeric(prediction)))
+
+modal_prediction_fa
+
+```
+
+```{r}
+
+fa_results <- fa_results %>%
+  mutate(mapped_label = case_when(
+    label == "A" ~ 4,
+    label == "B" ~ 1, 
+    label == "C" ~ 2,
+    label == "D" ~ 3,
+    TRUE ~ NA_real_  
+  )) %>%
+  mutate(
+    prediction = as.factor(prediction)
+    , mapped_label = as.factor(mapped_label)
+  )
+
+
+fa_results <- fa_results %>%
+  mutate(
+    prediction = factor(prediction, levels = 1:4),
+    mapped_label = factor(mapped_label, levels = 1:4)
+  )
+
+
+conf_matrix = confusionMatrix(fa_results$prediction, fa_results$mapped_label)
+conf_matrix
+
+```
+looks like the overall accuracy is slightly higher than the original, the balanced accuracy of cluster 3 (class D) is slightly lower. This is a trade off, and we would need to know more about the intended use of the model to make a choice between the two.
+
+```{r}
+
+ari_fa <- adjustedRandIndex(fitM_fa$classification, as.numeric(data_labels$label))
+cat("Factor-based GMM ARI:", ari_fa, "\n")
+cat("Original GMM ARI:", std_vs_actual, "\n")
+```
+ARI is slightly higher for the model with feature reduction. 
+
+
+
+## Model Evaluation
+
+```{r}
+final_model <- fitM_fa
+
+```
+
+
+```{r}
+
+fviz_mclust(fitM, "uncertainty")
+
+```
+
+```{r}
+high_uncertainty <- which(fitM$uncertainty > 0.4)
+
+
+table(data_labels$label[high_uncertainty])
+```
+Most of the points with high uncertainty belong to class D. makes sense.
+
+
+
+
+```{r}
+cluster_composition <- data.frame(
+  cluster = fitM$classification,
+  true_label = data_labels$label
+) %>%
+  group_by(cluster) %>%
+  count(true_label) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  arrange(cluster, desc(percentage))
+
+print(cluster_composition)
+```
+
+
+```{r}
+class_metrics <- conf_matrix$byClass
+
+for (class in 1:nrow(class_metrics)) {
+  cat("\nClass:", rownames(class_metrics)[class], "\n")
+  cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
+  cat("Specificity:", round(class_metrics[class, "Specificity"], 4), "\n")
+  cat("Precision (PPV):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
+  cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
+}
+
+```
+
+f1 score of 0.8 for class D is pretty good i think. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,67 @@
+---
+title: "report"
+author: "Daniel Hill"
+date: "27 April 2025"
+format: 
+  pdf:
+    documentclass: scrartcl
+    classoption: twocolumn
+    number-sections: true
+    toc: true
+    toc-depth: 3
+    toc-title: Contents
+    lof: true
+    lot: true
+    geometry:
+      - top=30mm
+      - left=20mm
+      - heightrounded
+    dev: pdf
+bibliography: references.bib
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        
+  warning = FALSE,     
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "80%"
+)
+```
+
+# Abstract {.unnumbered}
+
+Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principles gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three.
+
+
+# Introduction
+
+
+
+# Methods
+
+## Data Description
+
+## Exploratory Data Analysis Approach
+
+## Supervised Learning Methods
+
+## Unsupervised Learning Methods
+
+# Results
+
+## Exploratory Data Analysis Findings
+
+## Supervised Learning Results
+
+## Unsupervised Learning Results
+
+# Discussion
+
+# Conclusion
+
+# References
