@@ -1,5 +1,5 @@
 ---
-title: "report"
+title: "Advanced Statistics: Application of supervised and unsupervised methods to biological data"
 author: "Daniel Hill"
 date: "27 April 2025"
 format: 
@@ -17,9 +17,25 @@ format:
       - left=20mm
       - heightrounded
     dev: pdf
+    natbiboptions: "authoryear,round"
+    include-in-header:
+      text: |
+        \usepackage{etoolbox}
+        \pretocmd{\tableofcontents}{\newpage}{}{}
+abstract: "**Abstract:** Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principles gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three."
 bibliography: references.bib
 editor: visual
+include-in-header:
+  text: |
+    \usepackage{titling}
+    \pretitle{\begin{center}\LARGE\bfseries}
+    \posttitle{\end{center}}
+    \preauthor{\begin{center}\large}
+    \postauthor{\end{center}}
+    \predate{\begin{center}}
+    \postdate{\end{center}}
 ---
+\newpage
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -33,35 +49,69 @@ knitr::opts_chunk$set(
 )
 ```
 
-# Abstract {.unnumbered}
-
-Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principles gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three.
-
 
 # Introduction
 
+this is a section where i write the introduction. 
 
 
 # Methods
 
 ## Data Description
+20 features, a label with four catagorical classes. two groups of correlated features. Outliers removed using z score method. one feature transformed using logarithm. All features scaled and centered. All features numeric. 
+
+Bootstrapping was used to create a larger dataset.
+
 
 ## Exploratory Data Analysis Approach
 
+find distributions within each feature, look for correlations between features, scatter between plots that features that have high correlation to the catagorical label or another feature, use PCA to visualize all data together, calculate hopkins statistic to determine the clustering tendency of the data
+
+
 ## Supervised Learning Methods
 
+logistic regression - including class weighting and L2 regularization, and feature selection. Random forest, including feature selection and tuning of mtry. SVM, with feature selection and tuning of kernel selection, gamma and cost parameters.
+
+
 ## Unsupervised Learning Methods
+
+Agglomerative hierarchical clustering, including tuning of linking metric. Gaussian mixture model based clustering, including selecting a model, regularization using shrinkage parameter, and dimensionality reduction using factor analysis.    
+
 
 # Results
 
 ## Exploratory Data Analysis Findings
 
+most features are normally distributed except for X8 which is highly skewed. Features originally had different scales. X7, X8, X9 columns are correlated and correlate highly with the labels. X17, X18, X19 and X20 are highly correlated together and have very low correlation with the labels. 
+
+The PCA showed the four labels had some clustered structure, but also some significant overlap. The hopkins statistic showed there was a moderate clustering tendency, but that the label column when included made the clustering tendency extremely high. This is an initial suggestion that supervised learning would be more effective than unsupervised learning
+
+
 ## Supervised Learning Results
+
+logistic regression was not great. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
+
+The random forest performed well without any configuration. feature selection was not effective. still struggled at seperating class D. mtry was tuned. 
+
+svm was good but not as good as random forest. lots of tuning. feature selection was uneffective
+
 
 ## Unsupervised Learning Results
 
+ahc was good not great.
+
+Gaussian mixed model clustering performed very well. dimensionality reduction using factor analysis was slightly effective. 
+
 # Discussion
+
+the final model had good overall accuracy but caution is advised when using a ml model with this data due to the poor performance in class D - if false positives or false negatives in this class have serious implications, some models become immediately unusable. 
+
+
 
 # Conclusion
 
+
+
 # References
+
+
