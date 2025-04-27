@@ -30,9 +30,10 @@ library(tidyverse)
 library(grid)
 library(ggplot2)
 ```
+
 # Exploritory Data Analysis
 
-This notebook with explore the dataset through descriptive statistics and visualizations in order to gain understanding on the characteristics of the data and reveal anything that will need to be taken into consideration in further tasks. 
+This notebook with explore the dataset through descriptive statistics and visualizations in order to gain understanding on the characteristics of the data and reveal anything that will need to be taken into consideration in further tasks.
 
 ## Overview
 
@@ -49,17 +50,63 @@ describe(data)
 
 ```{r}
 library(skimr)
-skim(data)
+desc <- skim(data)
+desc
+```
+
+```{r}
+library(kableExtra)
+
+desc %>% 
+  select(
+    skim_type,
+    skim_variable, 
+    n_missing, 
+    character.n_unique, 
+    numeric.mean, 
+    numeric.sd, 
+    numeric.p0, 
+    numeric.p25, 
+    numeric.p50, 
+    numeric.p75, 
+    numeric.p100, 
+    numeric.hist
+  ) %>% 
+  rename(
+    "Data Type" = skim_type ,
+    "Variable Name" = skim_variable, 
+    "No. missing values" = n_missing, 
+    "Unique values" = character.n_unique, 
+    "mean" = numeric.mean, 
+    "Std deviation" = numeric.sd, 
+    "minimum" = numeric.p0, 
+    "lower quartile" = numeric.p25, 
+    "median" = numeric.p50, 
+    "upper quartile" = numeric.p75, 
+    "maximum" = numeric.p100, 
+    "histogram" = numeric.hist
+  ) %>%
+  as.data.frame() %>%
+  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) %>%
+  kable(
+    caption = "Table 1: Data Description", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position")
+  )
 ```
 
 These tables introduce some statistics about our dataset.
 
 There are some columns with missing values, but it looks like the rate of missing values is so low that it will be safe to remove these rows entirely - its not going to reduce the size of the data enought to decrease the accuracy of any of our modelling. Removing the rows is very straightforward and there will be no need to do anything more complex like filling in with the median value.
 
-Most of the columns look like they have a fairly normal distribution - only X8 has a significant skew and may need to be transformed before its used in models. 
+Most of the columns look like they have a fairly normal distribution - only X8 has a significant skew and may need to be transformed before its used in models.
 
-There are different scales among the columns, with some ranging between 0 and 1 and others being an order of mangnitude large. Its important to notice this to be aware that rescaling may be needed for modelling approaches that are sensitive to the scale of data such as SVM. 
-
+There are different scales among the columns, with some ranging between 0 and 1 and others being an order of mangnitude large. Its important to notice this to be aware that rescaling may be needed for modelling approaches that are sensitive to the scale of data such as SVM.
 
 ## Distributions and Relationships
 
@@ -68,8 +115,8 @@ There are different scales among the columns, with some ranging between 0 and 1 
 library(GGally)
 ggpairs(data)
 ```
-Not a great visualization, but I can already spot that in addition to the skew of X8, X7 has a bimodal distribution with two peaks on the density plot. This could affect how it influences some models that assume the data is normally distributed. Its probably best not to try and transform it until we see if it has high feature importance in any of these models if we decide to use them.
 
+Not a great visualization, but I can already spot that in addition to the skew of X8, X7 has a bimodal distribution with two peaks on the density plot. This could affect how it influences some models that assume the data is normally distributed. Its probably best not to try and transform it until we see if it has high feature importance in any of these models if we decide to use them.
 
 ```{r}
 one_hot_data <- model.matrix(~ label - 1, data = data)
@@ -97,11 +144,12 @@ ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
                        midpoint = 0, limit = c(-1, 1), 
                        name = "Correlation") 
 ```
-In this heatmap, we are looking for any columns with high correlation, as most of our models will assume that the features of our data is independent. We can see that there are some correlations between columns X7, X8 and X9, and also within the group X17, X18, X19 and X20. It may be the case that we select only certain features from these, such as only X8 and remove X7 and X9. Or, we could try some feature reduction techniques such as looking for underlying factors that explain X17 to X20. Its worth noticing that X17 to X20 have a very low correlation with the labels, so it might be more pragmatic to simply remove them all from the models and see if this affects the accuracy and precision. 
+
+In this heatmap, we are looking for any columns with high correlation, as most of our models will assume that the features of our data is independent. We can see that there are some correlations between columns X7, X8 and X9, and also within the group X17, X18, X19 and X20. It may be the case that we select only certain features from these, such as only X8 and remove X7 and X9. Or, we could try some feature reduction techniques such as looking for underlying factors that explain X17 to X20. Its worth noticing that X17 to X20 have a very low correlation with the labels, so it might be more pragmatic to simply remove them all from the models and see if this affects the accuracy and precision.
 
 We can also check how correlated our variables are with the target variable - the label columns. Here, i've one hot encoded the four label values so we can compute a numeric correlation between each value and the 20 numeric variables. We can see that many of the columns, particularly X1 throught to X4 and X7 to X12 as well as X14 have noticable correlations. This is a good sign as its an indication that our data has the predictive power necessary to build classification models.
 
-We should not be suprised to find that some columns have correlations with eachother - the data description file states that these are biological indications such as gene expressions and environmental factors. We know that its possible for biological pathways to intefere with one another, and very common for environmental factors such as education level and household income to be causally related. 
+We should not be suprised to find that some columns have correlations with eachother - the data description file states that these are biological indications such as gene expressions and environmental factors. We know that its possible for biological pathways to intefere with one another, and very common for environmental factors such as education level and household income to be causally related.
 
 ```{r}
 #| cache: true 
@@ -163,7 +211,9 @@ data %>%
     geom_vline(aes(xintercept=value), data=quartile_df, 
                size=1,color="blue", linetype=2)
 ```
+
 This is the column with the most skew - it might be possible to use a logarithmic transformation of the column instead
+
 ```{r}
 quartile_df <- data %>%
   summarize(first=quantile(drop_na(data)$X9, p=1/4),
@@ -191,6 +241,7 @@ ggplot(data_long, aes(x = value)) +
   labs(x = "Value", y = "Count", title = "Histograms of All Columns")
 
 ```
+
 Most of the columns appear to follow normal distributions with the exception of X8 which is skewed and X7 which is bimodel. We also notice that the scale is different for different columns, and not all are centered at the same place. Scaling and centering are some preprocessing steps we can take before further analysis and modelling.
 
 ```{r}
@@ -243,6 +294,7 @@ pairs(data[11:15], panel = panel.smooth)
 ```{r}
 pairs(data[16:20], panel = panel.smooth)
 ```
+
 theres definitly some linear correlations between columns X17, X18, X19 and X20
 
 ```{r}
@@ -269,9 +321,8 @@ library(GGally)
 ggpairs(data[16:20])
 ```
 
-
 ```{r}
-
+data_clean <- data %>% drop_na()
 clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
 
 boxplot <- ggplot( clean_and_long,  aes(label, Value, colour=label)  ) +
@@ -280,10 +331,10 @@ boxplot <- ggplot( clean_and_long,  aes(label, Value, colour=label)  ) +
 
 boxplot
 ```
-Here im looking for different distributions of the label within each column. Where the box plots of each class are similar, I expect that column to have lower predictive power than when there are differences between the box plots of the different classes. I can see that X7 produces disimilar boxplots for example. 
+
+Here im looking for different distributions of the label within each column. Where the box plots of each class are similar, I expect that column to have lower predictive power than when there are differences between the box plots of the different classes. I can see that X7 produces disimilar boxplots for example.
 
 This shows us that classification may be possible - if the box plots of each label were the same within each column, I would not be confident of achieving good classification results with this dataset.
-
 
 ```{r}
 
@@ -301,7 +352,8 @@ boxplot <- ggplot( clean_and_long,  aes(label, Value, colour=label)  ) +
 
 boxplot
 ```
-titles are prettier, but the axis of each plot are pretty ugly. Maybe I can turn them off - im only really interested in the relative differences of the boxes. I also need to learn how to adjust the underlying canvas size. 
+
+titles are prettier, but the axis of each plot are pretty ugly. Maybe I can turn them off - im only really interested in the relative differences of the boxes. I also need to learn how to adjust the underlying canvas size.
 
 ## Dimensionality reduction and clustering tendency
 
@@ -324,7 +376,8 @@ ggpairs(pc_data)
 ggplot(pc_data, aes(x=PC1, y=PC2)) +
        geom_point()
 ```
-The scatter plot of the first two principle components does not immediately show any underlying structure to the data that would suggest that clustering is possible. However, due to the information loss when reducing from twenty to two dimensions, we should not dismiss the possibility yet. 
+
+The scatter plot of the first two principle components does not immediately show any underlying structure to the data that would suggest that clustering is possible. However, due to the information loss when reducing from twenty to two dimensions, we should not dismiss the possibility yet.
 
 ```{r}
 labelled_pca <- bind_cols(pc_data[1:2], data.frame(data_clean$label), .name_repair = "universal")
@@ -334,7 +387,8 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
 
 
 ```
-definitly a bit of loose clustering tendency here!  
+
+definitly a bit of loose clustering tendency here!
 
 ```{r}
 labelled_pca <- bind_cols(pc_data[1:2], data.frame(data_clean$label), .name_repair = "universal")
@@ -398,8 +452,7 @@ print(hopkins_stat)
 
 okay nvm, this is really high.
 
-
-I'm going to try again with only the highly correlated columns and see if theres a difference. 
+I'm going to try again with only the highly correlated columns and see if theres a difference.
 
 ```{r}
 correlated_data <- select(data_clean, columns = c(
@@ -419,7 +472,8 @@ hopkins_stat_3 <- hopkins(correlated_data)
 print(hopkins_stat_3)
 
 ```
-Its almost the same. So this suggests that these columns are providing all of the structure to the data. I'm going to check my assumption by only using the columns not in the list above. 
+
+Its almost the same. So this suggests that these columns are providing all of the structure to the data. I'm going to check my assumption by only using the columns not in the list above.
 
 ```{r}
 less_correlated_data <- select(data_clean, columns = c(
@@ -439,8 +493,8 @@ hopkins_stat_4 <- hopkins(less_correlated_data)
 print(hopkins_stat_4)
 
 ```
-still the same so idk whats going on now...
 
+still the same so idk whats going on now...
 
 ```{r}
 least_correlated_data <- select(data_clean, columns = c(
@@ -454,9 +508,10 @@ hopkins_stat_5 <- hopkins(least_correlated_data)
 print(hopkins_stat_5)
 
 ```
+
 Not sure I understand hopkins statistic anymore tbh.
 
-lets look at how much of the variation in data was explained by the first two principle componants 
+lets look at how much of the variation in data was explained by the first two principle componants
 
 ```{r}
 var_explained <- pc$sdev^2 / sum(pc$sdev^2) # = std^2 of each component / std^2 all the compenents. because std = sqrt(var). theres probably an r func for variance...  
@@ -479,8 +534,8 @@ ggplot(var_df, aes(x = PC, y = VarExplained)) +
   theme_minimal()
 
 ```
-So the curve is rising pretty smoothly. This tells me that the the structure of the data isn't being dominated by a few key columns, its going to take all of them to explain the clustering structure.
 
+So the curve is rising pretty smoothly. This tells me that the the structure of the data isn't being dominated by a few key columns, its going to take all of them to explain the clustering structure.
 
 ```{r}
 
@@ -497,6 +552,7 @@ data_clean %>%
     geom_point()
 
 ```
+
 These are two plots of columns that I think have high predictive power based on earlier heatmap and boxplot visualizations. You can see that its definitly possible to seperate the classes, but there is still considerable overlap in the groups
 
 ```{r}
@@ -515,14 +571,11 @@ data_clean %>%
 
 ```
 
-
-These are plots of columns that I think have very low predictive power based on earlier analysis. We can see almost total overlap of the classes in these plots. Considering that ~95% of variance seems to be explained when dimensionality is reduced from 20 to 16 and that these four columns exhibit high correlation with eachother, I still think that removing them before modelling is a viable approach. 
+These are plots of columns that I think have very low predictive power based on earlier analysis. We can see almost total overlap of the classes in these plots. Considering that \~95% of variance seems to be explained when dimensionality is reduced from 20 to 16 and that these four columns exhibit high correlation with eachother, I still think that removing them before modelling is a viable approach.
 
 ## outlier detection
 
-the final bit of exploration will be to look for outliers in each column. We want to know if any columns are particularly affected and whether more cleaning is necessary.
-We will implement both z score tests and interquartile range tests and compare results.
-
+the final bit of exploration will be to look for outliers in each column. We want to know if any columns are particularly affected and whether more cleaning is necessary. We will implement both z score tests and interquartile range tests and compare results.
 
 ```{r}
 data_z <- data_clean %>%
@@ -566,14 +619,15 @@ ggplot(outliers, aes(x = Feature)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # i should go back and do this angle adjustment on every plot
 
 ```
+
 looks like theres way more outliers in X8 for some reason. It probably because X8 is the row thats skewed instead of being normally distributed and the z score test assumes data is normally distributed so it can use the standard deviation and mean to determine where the tails should meet the x axis.
 
 ```{r}
 total_outliers <- outliers %>% summarise(count=n_distinct(row_id))
 total_outliers
 ```
-total number of outliers is about 7% of the dataset. This seems like a reasonable number of rows to remove. However, we should see if we can use a different method for detecting outliers in X8, or if not then try and transform X8 to make it normally distributed before applying the z score test.
 
+total number of outliers is about 7% of the dataset. This seems like a reasonable number of rows to remove. However, we should see if we can use a different method for detecting outliers in X8, or if not then try and transform X8 to make it normally distributed before applying the z score test.
 
 ```{r}
 
@@ -591,6 +645,7 @@ outliers <- data_long %>%
 
 outliers
 ```
+
 this seems like a much higher number of anomalies...
 
 ```{r}
@@ -599,7 +654,3 @@ x8_outliers
 ```
 
 There are 24 "extreme" outliers in the X8 column. This means datapoints that are 3 or more interquartile ranges away from the edge of the nearest quartile (rather than 1.5 for a standard anomaly). If we want to reduce the number of anomalies we remove from the X8 feature column from over 50 returned by the z test method, this approach would bring the number of outliers removed from this column in line with the number of anomalies removed from other columns.
-
-
-
-

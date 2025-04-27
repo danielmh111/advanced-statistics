@@ -60,6 +60,7 @@ library(hopkins)
 library(mnet)
 library(nnet)
 library(pROC)
+library(randomForest)
 ```
 
 # Introduction
@@ -851,6 +852,433 @@ best_reg_conf_table
 logistic regression was not great. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
 
 ### Random Forest
+
+```{r random-forest-base}
+rf_model <- randomForest(
+  label ~ ., 
+  data = train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+rf_predictions <- predict(rf_model, test_data)
+rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$label)
+
+rf_conf_df <- as.data.frame(rf_conf_matrix$table)
+rf_conf_df <- rf_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_confm_table <- rf_conf_df %>%
+  kable(
+    caption = "Basic Random Forest Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_confm_table
+
+
+rf_overall_stats <- data.frame(
+  Statistic = names(rf_conf_matrix$overall),
+  Value = rf_conf_matrix$overall
+)
+
+
+rf_overall_stats_table <- rf_overall_stats %>%
+  kable(
+    caption = "Basic Random Forest Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_overall_stats_table
+
+
+
+rf_byClass_stats <- as.data.frame(rf_conf_matrix$byClass)
+rf_byClass_stats <- t(rf_byClass_stats) # I want the class names to be columns not rows
+rf_byClass_stats <- as.data.frame(rf_byClass_stats)
+
+
+rf_byClass_stats_table <- rf_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Basic Random Forest Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_byClass_stats_table
+```
+
+```{r random-forest-base-feature-importance-table}
+
+importance_values <- as.data.frame(importance(rf_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+feature_importance_table <- importance_values %>%
+  kable(
+    caption = "Basic Random Forest Feature Importance", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+feature_importance_table
+```
+
+
+```{r random-forest-remove-unimportant-features}
+
+selected_train_data_1 <- train_data %>%
+  select(-X17, -X19, -X20, -X15, -X6)
+selected_test_data_1 <- test_data %>%
+  select(-X17, -X19, -X20, -X15, -X6)
+rf_feat_selection_1_model <- randomForest(
+  label ~ ., 
+  data = selected_train_data_1,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+
+rf_fs_1_predictions <- predict(rf_feat_selection_1_model, selected_test_data_1)
+
+rf_fs_1_conf_matrix <- confusionMatrix(rf_fs_1_predictions, selected_test_data_1$label)
+
+
+rf_fs_1_conf_df <- as.data.frame(rf_fs_1_conf_matrix$table)
+rf_fs_1_conf_df <- rf_fs_1_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_fs_1_confm_table <- rf_fs_1_conf_df %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_fs_1_confm_table
+
+
+rf_fs_1_overall_stats <- data.frame(
+  Statistic = names(rf_fs_1_conf_matrix$overall),
+  Value = rf_fs_1_conf_matrix$overall
+)
+
+
+rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_fs_1_overall_stats_table
+
+
+
+rf_fs_1_byClass_stats <- as.data.frame(rf_fs_1_conf_matrix$byClass)
+rf_fs_1_byClass_stats <- t(rf_fs_1_byClass_stats) # I want the class names to be columns not rows
+rf_fs_1_byClass_stats <- as.data.frame(rf_fs_1_byClass_stats)
+
+
+rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Random Forest (5 least important features removed) Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_1_byClass_stats_table
+```
+
+```{r random-forest-remove-unimportant-features-feature-importance}
+
+rf_fs_1_importance_values <- as.data.frame(importance(rf_feat_selection_1_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+rf_fs_1_feature_importance_table <- rf_fs_1_importance_values %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Feature Importance", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_1_feature_importance_table
+```
+
+```{r random-forest-remove-important-features}
+
+selected_train_data_2 <- train_data %>%
+  select(-X8)
+selected_test_data_2 <- test_data %>%
+  select(-X8)
+rf_feat_selection_2_model <- randomForest(
+  label ~ ., 
+  data = selected_train_data_2,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+
+rf_fs_2_predictions <- predict(rf_feat_selection_2_model, selected_test_data_2)
+
+rf_fs_2_conf_matrix <- confusionMatrix(rf_fs_2_predictions, selected_test_data_2$label)
+
+
+rf_fs_2_conf_df <- as.data.frame(rf_fs_2_conf_matrix$table)
+rf_fs_2_conf_df <- rf_fs_2_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_fs_2_confm_table <- rf_fs_2_conf_df %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_fs_2_confm_table
+
+
+rf_fs_2_overall_stats <- data.frame(
+  Statistic = names(rf_fs_2_conf_matrix$overall),
+  Value = rf_fs_2_conf_matrix$overall
+)
+
+
+rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_fs_2_overall_stats_table
+
+
+
+rf_fs_2_byClass_stats <- as.data.frame(rf_fs_2_conf_matrix$byClass)
+rf_fs_2_byClass_stats <- t(rf_fs_2_byClass_stats) # I want the class names to be columns not rows
+rf_fs_2_byClass_stats <- as.data.frame(rf_fs_2_byClass_stats)
+
+
+rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Random Forest (5 least important features removed) Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_2_byClass_stats_table
+```
+```{r random-forest-remove-important-features-feature-importance}
+
+rf_fs_2_importance_values <- as.data.frame(importance(rf_feat_selection_2_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Feature Importance", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_2_feature_importance_table
+```
+
+```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**"}
+
+train_data_no_label <- train_data %>% select(- label)
+
+tuneRF_result <- tuneRF(
+  x = train_data_no_label,
+  y = train_data$label,
+  ntreeTry = 500,
+  mtryStart = 4,         # = sqrt(num of features) as before
+  stepFactor = 1.5,      # this func trys a step above and below the starting value of mtry by multiplying by this number. 1.5 is the smallest step we can be sure will round to a number bigger/smaller that our stat
+  improve = 0.01,        # model only has to imrove slightly for tuning to continue
+  trace = FALSE, # turn off trace for report          
+  plot = TRUE            
+)
+
+
+optimal_mtry <- tuneRF_result[which.min(tuneRF_result[, "OOBError"]), "mtry"]
+
+```
+```{r}
+rf_tuned_model <- randomForest(
+  label ~ ., 
+  data = train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = 9, # optimal value from tuning with RFTune
+  importance = TRUE       
+)
+
+
+rf_tuned_predictions <- predict(rf_tuned_model, test_data)
+rf_tuned_conf_matrix <- confusionMatrix(rf_tuned_predictions, test_data$label)
+
+rf_tuned_conf_df <- as.data.frame(rf_tuned_conf_matrix$table)
+rf_tuned_conf_df <- rf_tuned_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_tuned_confm_table <- rf_tuned_conf_df %>%
+  kable(
+    caption = "Tuned Random Forest Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_tuned_confm_table
+
+
+rf_tuned_overall_stats <- data.frame(
+  Statistic = names(rf_conf_matrix$overall),
+  Value = rf_conf_matrix$overall
+)
+
+
+rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
+  kable(
+    caption = "Tuned Random Forest Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_tuned_overall_stats_table
+
+
+
+rf_tuned_byClass_stats <- as.data.frame(rf_tuned_conf_matrix$byClass)
+rf_tuned_byClass_stats <- t(rf_tuned_byClass_stats) # I want the class names to be columns not rows
+rf_tuned_byClass_stats <- as.data.frame(rf_tuned_byClass_stats)
+
+
+rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Tuned Random Forest Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_tuned_byClass_stats_table
+
+```
+
 
 
 

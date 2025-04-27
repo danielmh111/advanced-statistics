@@ -1,0 +1,703 @@
+---
+title: "eda"
+author: "Daniel Hill"
+format: 
+  pdf:
+    pdf-engine: xelatex
+    toc: true
+    number-sections: true
+    fig-pos: "H"
+    fig-width: 6
+    fig-height: 4
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+```{r}
+
+library(tidyverse)
+library(grid)
+library(ggplot2)
+```
+
+
+# Exploritory Data Analysis
+
+This notebook with explore the dataset through descriptive statistics and visualizations in order to gain understanding on the characteristics of the data and reveal anything that will need to be taken into consideration in further tasks. 
+
+## Overview
+
+
+
+```{r}
+data <- read_csv("Data(2).csv")
+summary(data)
+head(data)
+```
+
+```{r}
+library(psych)
+describe(data)
+```
+
+```{r}
+library(skimr)
+skim(data)
+```
+
+
+
+These tables introduce some statistics about our dataset.
+
+There are some columns with missing values, but it looks like the rate of missing values is so low that it will be safe to remove these rows entirely - its not going to reduce the size of the data enought to decrease the accuracy of any of our modelling. Removing the rows is very straightforward and there will be no need to do anything more complex like filling in with the median value.
+
+Most of the columns look like they have a fairly normal distribution - only X8 has a significant skew and may need to be transformed before its used in models. 
+
+There are different scales among the columns, with some ranging between 0 and 1 and others being an order of mangnitude large. Its important to notice this to be aware that rescaling may be needed for modelling approaches that are sensitive to the scale of data such as SVM. 
+
+
+## Distributions and Relationships
+
+
+
+```{r}
+#| warning: false
+library(GGally)
+ggpairs(data)
+```
+
+
+Not a great visualization, but I can already spot that in addition to the skew of X8, X7 has a bimodal distribution with two peaks on the density plot. This could affect how it influences some models that assume the data is normally distributed. Its probably best not to try and transform it until we see if it has high feature importance in any of these models if we decide to use them.
+
+
+
+
+```{r}
+one_hot_data <- model.matrix(~ label - 1, data = data)
+one_hot_data <- data %>%
+  select(-label) %>%
+  bind_cols(one_hot_data)
+head(one_hot_data)
+```
+
+```{r}
+cor_matrix <- cor(one_hot_data, use = "complete.obs", method = "pearson")
+head(cor_matrix)
+```
+
+```{r}
+library(reshape2)
+cor_data <- melt(cor_matrix)
+head(cor_data)
+```
+
+```{r}
+ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), 
+                       name = "Correlation") 
+```
+
+
+In this heatmap, we are looking for any columns with high correlation, as most of our models will assume that the features of our data is independent. We can see that there are some correlations between columns X7, X8 and X9, and also within the group X17, X18, X19 and X20. It may be the case that we select only certain features from these, such as only X8 and remove X7 and X9. Or, we could try some feature reduction techniques such as looking for underlying factors that explain X17 to X20. Its worth noticing that X17 to X20 have a very low correlation with the labels, so it might be more pragmatic to simply remove them all from the models and see if this affects the accuracy and precision. 
+
+We can also check how correlated our variables are with the target variable - the label columns. Here, i've one hot encoded the four label values so we can compute a numeric correlation between each value and the 20 numeric variables. We can see that many of the columns, particularly X1 throught to X4 and X7 to X12 as well as X14 have noticable correlations. This is a good sign as its an indication that our data has the predictive power necessary to build classification models.
+
+We should not be suprised to find that some columns have correlations with eachother - the data description file states that these are biological indications such as gene expressions and environmental factors. We know that its possible for biological pathways to intefere with one another, and very common for environmental factors such as education level and household income to be causally related. 
+
+
+
+```{r}
+#| cache: true 
+quartile_df <- data %>%
+  summarize(first=quantile(drop_na(data)$X1, p=1/4),
+            second=quantile(drop_na(data)$X1, p=1/2),
+            third=quantile(drop_na(data)$X1, p=3/4)) %>%
+  tidyr::gather(quartile, value)
+
+data %>%
+  ggplot(aes(x=X1)) +
+    geom_histogram(bins=50) +
+    # (aes(xintercept=median(X1)), size=1.5, color="red") +
+    geom_vline(aes(xintercept=value), data=quartile_df, 
+               size=1,color="blue", linetype=2)
+```
+
+```{r}
+quartile_df <- data %>%
+  summarize(first=quantile(drop_na(data)$X2, p=1/4),
+            second=quantile(drop_na(data)$X2, p=1/2),
+            third=quantile(drop_na(data)$X2, p=3/4)) %>%
+  tidyr::gather(quartile, value)
+
+data %>%
+  ggplot(aes(x=X2)) +
+    geom_histogram(bins=50) +
+    # (aes(xintercept=median(X2)), size=1.5, color="red") +
+    geom_vline(aes(xintercept=value), data=quartile_df, 
+               size=1,color="blue", linetype=2)
+```
+
+```{r}
+quartile_df <- data %>%
+  summarize(first=quantile(drop_na(data)$X7, p=1/4),
+            second=quantile(drop_na(data)$X7, p=1/2),
+            third=quantile(drop_na(data)$X7, p=3/4)) %>%
+  tidyr::gather(quartile, value)
+
+data %>%
+  ggplot(aes(x=X7)) +
+    geom_histogram(bins=50) +
+    # (aes(xintercept=median(X7)), size=1.5, color="red") +
+    geom_vline(aes(xintercept=value), data=quartile_df, 
+               size=1,color="blue", linetype=2)
+```
+
+```{r}
+quartile_df <- data %>%
+  summarize(first=quantile(drop_na(data)$X8, p=1/4),
+            second=quantile(drop_na(data)$X8, p=1/2),
+            third=quantile(drop_na(data)$X8, p=3/4)) %>%
+  tidyr::gather(quartile, value)
+
+data %>%
+  ggplot(aes(x=X8)) +
+    geom_histogram(bins=50) +
+    # (aes(xintercept=median(X8)), size=1.5, color="red") +
+    geom_vline(aes(xintercept=value), data=quartile_df, 
+               size=1,color="blue", linetype=2)
+```
+
+
+This is the column with the most skew - it might be possible to use a logarithmic transformation of the column instead
+
+
+```{r}
+quartile_df <- data %>%
+  summarize(first=quantile(drop_na(data)$X9, p=1/4),
+            second=quantile(drop_na(data)$X9, p=1/2),
+            third=quantile(drop_na(data)$X9, p=3/4)) %>%
+  tidyr::gather(quartile, value)
+
+data %>%
+  ggplot(aes(x=X9)) +
+    geom_histogram(bins=50) +
+    # (aes(xintercept=median(X9)), size=1.5, color="red") +
+    geom_vline(aes(xintercept=value), data=quartile_df, 
+               size=1,color="blue", linetype=2)
+```
+
+```{r}
+data_long <- drop_na(data) %>%
+  select(- starts_with("label")) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+ggplot(data_long, aes(x = value)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black") +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal() +
+  labs(x = "Value", y = "Count", title = "Histograms of All Columns")
+
+```
+
+
+Most of the columns appear to follow normal distributions with the exception of X8 which is skewed and X7 which is bimodel. We also notice that the scale is different for different columns, and not all are centered at the same place. Scaling and centering are some preprocessing steps we can take before further analysis and modelling.
+
+
+
+```{r}
+data <- read_csv("Data(2).csv")
+data %>%
+  ggplot(aes(x=X7, y=X8)) +
+    geom_point()
+
+```
+
+```{r}
+data <- read_csv("Data(2).csv")
+data %>%
+  ggplot(aes(x=X7, y=X9)) +
+    geom_point()
+
+```
+
+```{r}
+data <- read_csv("Data(2).csv")
+data %>%
+  ggplot(aes(x=X8, y=X9)) +
+    geom_point()
+
+```
+
+```{r}
+panel.hist <- function(x, ...) {
+  usr <- par("usr")
+  on.exit(par(usr))
+  par(usr = c(usr[1:2], 0, 1.5))
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks
+  nB <- length(breaks)
+  y <- h$counts
+  y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "skyblue", ...)
+}
+pairs(data[1:5], panel = panel.smooth, diag.panel = panel.hist)
+```
+
+```{r}
+pairs(data[6:10], panel = panel.smooth)
+```
+
+```{r}
+pairs(data[11:15], panel = panel.smooth)
+```
+
+```{r}
+pairs(data[16:20], panel = panel.smooth)
+```
+
+
+theres definitly some linear correlations between columns X17, X18, X19 and X20
+
+
+
+```{r}
+#| warning: false
+library(GGally)
+ggpairs(data[1:5])
+```
+
+```{r}
+#| warning: false
+library(GGally)
+ggpairs(data[6:10])
+```
+
+```{r}
+#| warning: false
+library(GGally)
+ggpairs(data[11:15])
+```
+
+```{r}
+#| warning: false
+library(GGally)
+ggpairs(data[16:20])
+```
+
+```{r}
+
+clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
+
+boxplot <- ggplot( clean_and_long,  aes(label, Value, colour=label)  ) +
+  geom_boxplot() +
+  facet_wrap(~Feature, scales="free")
+
+boxplot
+```
+
+
+Here im looking for different distributions of the label within each column. Where the box plots of each class are similar, I expect that column to have lower predictive power than when there are differences between the box plots of the different classes. I can see that X7 produces disimilar boxplots for example. 
+
+This shows us that classification may be possible - if the box plots of each label were the same within each column, I would not be confident of achieving good classification results with this dataset.
+
+
+
+
+```{r}
+
+clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
+
+boxplot <- ggplot( clean_and_long,  aes(label, Value, colour=label)  ) +
+  geom_boxplot() +
+  facet_wrap(~Feature, scales="free") +
+  labs(
+    title = "Boxplots - Features by Class",
+    subtitle = "boxplots showing the distribution of each feature, split by the class label",
+    colour = "Class label"
+  ) 
+  
+
+boxplot
+```
+
+
+titles are prettier, but the axis of each plot are pretty ugly. Maybe I can turn them off - im only really interested in the relative differences of the boxes. I also need to learn how to adjust the underlying canvas size. 
+
+## Dimensionality reduction and clustering tendency
+
+
+
+```{r}
+data_clean <- data %>% drop_na() # pca wont work with null values in the frame
+```
+
+```{r}
+pc <- prcomp(data_clean[1:20],
+            center = TRUE,
+            scale = TRUE)
+# ggpairs(pc)
+```
+
+```{r}
+pc_data <- data.frame(pc$x)
+# pc_data
+
+ggpairs(pc_data)
+ggplot(pc_data, aes(x=PC1, y=PC2)) +
+       geom_point()
+```
+
+
+The scatter plot of the first two principle components does not immediately show any underlying structure to the data that would suggest that clustering is possible. However, due to the information loss when reducing from twenty to two dimensions, we should not dismiss the possibility yet. 
+
+
+
+```{r}
+labelled_pca <- bind_cols(pc_data[1:2], data.frame(data_clean$label), .name_repair = "universal")
+# labelled_pca
+ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
+       geom_point() 
+
+
+```
+
+
+definitly a bit of loose clustering tendency here!  
+
+
+
+```{r}
+labelled_pca <- bind_cols(pc_data[1:2], data.frame(data_clean$label), .name_repair = "universal")
+# labelled_pca
+ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
+      geom_point() +
+      labs(
+          title = "PCA Plot", 
+          subtitle = "PC1 by PC2 showing the class label of each point", 
+          colour="Class Label"
+        )
+      
+
+```
+
+
+
+After adding the labels in using colours to highlight the correct label of each point, we can see that although there is lots of overlap between each class, there is also some seperation, which means that it may be possible to create a clustering model that learns something from the underlying data. To learn more about the clustering tendency of the data, we can calculate the hopkins statistic
+
+
+
+```{r}
+library(hopkins)
+
+hopkins_stat <- hopkins(data[1:20]) 
+# we leave one row out to be the 'reference point' that we measure the distance to the other points from. i think. 
+
+# Print result
+print(hopkins_stat)
+```
+
+
+
+the clustering tendency of the data using the all the rows of the 20 features is really low. This means the class labels are pretty uniformly distributed across the ranges of all the features.
+
+We will try again only using columns that had migher magnitudes of correlation with the labels in the correlation heatmap.
+
+
+
+```{r}
+correlated_data <- select(data, columns = c(
+  1,
+  2,
+  3,
+  4,
+  7,
+  8,
+  9,
+  11,
+  12,
+  14
+  )
+)
+hopkins_stat_2 <- hopkins(correlated_data) 
+print(hopkins_stat)
+
+```
+
+
+
+try without the NA columns
+
+
+
+```{r}
+
+hopkins_stat <- hopkins(data_clean[1:20]) 
+# we leave one row out to be the 'reference point' that we measure the distance to the other points from. i think. 
+
+# Print result
+print(hopkins_stat)
+```
+
+
+
+okay nvm, this is really high.
+
+
+I'm going to try again with only the highly correlated columns and see if theres a difference. 
+
+
+
+```{r}
+correlated_data <- select(data_clean, columns = c(
+  1,
+  2,
+  3,
+  4,
+  7,
+  8,
+  9,
+  11,
+  12,
+  14
+  )
+)
+hopkins_stat_3 <- hopkins(correlated_data) 
+print(hopkins_stat_3)
+
+```
+
+
+Its almost the same. So this suggests that these columns are providing all of the structure to the data. I'm going to check my assumption by only using the columns not in the list above. 
+
+
+
+```{r}
+less_correlated_data <- select(data_clean, columns = c(
+  5,
+  6,
+  10,
+  13,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20
+  )
+)
+hopkins_stat_4 <- hopkins(less_correlated_data) 
+print(hopkins_stat_4)
+
+```
+
+
+still the same so idk whats going on now...
+
+
+
+
+```{r}
+least_correlated_data <- select(data_clean, columns = c(
+  17,
+  18,
+  19,
+  20
+  )
+)
+hopkins_stat_5 <- hopkins(least_correlated_data) 
+print(hopkins_stat_5)
+
+```
+
+
+Not sure I understand hopkins statistic anymore tbh.
+
+lets look at how much of the variation in data was explained by the first two principle componants 
+
+
+
+```{r}
+var_explained <- pc$sdev^2 / sum(pc$sdev^2) # = std^2 of each component / std^2 all the compenents. because std = sqrt(var). theres probably an r func for variance...  
+cum_var_explained <- cumsum(var_explained) # cumsum is cumulative var_explained, so var explained by pc1 + var explained by pc2.actually same as just pc$pc1 + pc$pc2 in this case, but i might want to look at the other componants later
+
+var_df <- data.frame(
+  PC = 1:length(var_explained),
+  VarExplained = var_explained,
+  CumVarExplained = cum_var_explained
+)
+
+
+ggplot(var_df, aes(x = PC, y = VarExplained)) +
+  geom_col() +
+  geom_line(aes(y = CumVarExplained)) +
+  geom_point(aes(y = CumVarExplained)) +
+  scale_y_continuous(sec.axis = sec_axis(~., name = "Cumulative Variance Explained")) +
+  labs(title = "PCA Variance Explained by Component",
+       x = "Principal Component", y = "Proportion of Variance Explained") +
+  theme_minimal()
+
+```
+
+
+So the curve is rising pretty smoothly. This tells me that the the structure of the data isn't being dominated by a few key columns, its going to take all of them to explain the clustering structure.
+
+
+
+
+```{r}
+
+data_clean %>%
+  ggplot(aes(x=X3, y=X7, colour=label)) +
+    geom_point()
+
+```
+
+```{r}
+
+data_clean %>%
+  ggplot(aes(x=X8, y=X9, colour=label)) +
+    geom_point()
+
+```
+
+
+These are two plots of columns that I think have high predictive power based on earlier heatmap and boxplot visualizations. You can see that its definitly possible to seperate the classes, but there is still considerable overlap in the groups
+
+
+
+```{r}
+
+data_clean %>%
+  ggplot(aes(x=X18, y=X19, colour=label)) +
+    geom_point()
+
+```
+
+```{r}
+
+data_clean %>%
+  ggplot(aes(x=X17, y=X20, colour=label)) +
+    geom_point()
+
+```
+
+
+
+
+These are plots of columns that I think have very low predictive power based on earlier analysis. We can see almost total overlap of the classes in these plots. Considering that ~95% of variance seems to be explained when dimensionality is reduced from 20 to 16 and that these four columns exhibit high correlation with eachother, I still think that removing them before modelling is a viable approach. 
+
+## outlier detection
+
+the final bit of exploration will be to look for outliers in each column. We want to know if any columns are particularly affected and whether more cleaning is necessary.
+We will implement both z score tests and interquartile range tests and compare results.
+
+
+
+
+```{r}
+data_z <- data_clean %>%
+  select(!starts_with("label")) %>%
+  mutate(
+    across( # works like pandas apply() i think?
+      everything(), 
+      scale # this scales everything using the standard deviation, so the output is the std of each value from the mean
+      )
+    ) %>%
+  mutate(row_id = row_number()) # add an id to the rows that we can use to track which row the anomaly is in
+  
+
+head(data_z)
+```
+
+```{r}
+z_data_long <- pivot_longer(data_z, cols =  -row_id, # dont pivot row id 
+                              names_to = "Feature", 
+                              values_to = "z_score")
+
+head(z_data_long)
+```
+
+```{r}
+
+outliers <- z_data_long %>%
+  filter(z_score > 3 | z_score < -3)
+
+head(outliers)
+```
+
+```{r}
+
+
+ggplot(outliers, aes(x = Feature)) +
+  geom_bar(stat = "count") +
+  labs(title = "Number of Outliers by Feature",
+       x = "Feature", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # i should go back and do this angle adjustment on every plot
+
+```
+
+
+looks like theres way more outliers in X8 for some reason. It probably because X8 is the row thats skewed instead of being normally distributed and the z score test assumes data is normally distributed so it can use the standard deviation and mean to determine where the tails should meet the x axis.
+
+
+
+```{r}
+total_outliers <- outliers %>% summarise(count=n_distinct(row_id))
+total_outliers
+```
+
+
+total number of outliers is about 7% of the dataset. This seems like a reasonable number of rows to remove. However, we should see if we can use a different method for detecting outliers in X8, or if not then try and transform X8 to make it normally distributed before applying the z score test.
+
+
+
+
+```{r}
+
+library(rstatix)
+
+data_long <- data_clean %>%
+  select(!starts_with("label")) %>%
+  mutate(row_id = row_number()) %>%
+  pivot_longer(cols = -row_id, names_to = "Feature", values_to = "Value")
+
+
+outliers <- data_long %>%
+  group_by(Feature) %>%
+  identify_outliers(Value) # rstatix uses iqr method by default, i think
+
+outliers
+```
+
+
+this seems like a much higher number of anomalies...
+
+
+
+```{r}
+x8_outliers <- outliers %>% filter(Feature=="X8" & is.extreme)
+x8_outliers
+```
+
+
+
+There are 24 "extreme" outliers in the X8 column. This means datapoints that are 3 or more interquartile ranges away from the edge of the nearest quartile (rather than 1.5 for a standard anomaly). If we want to reduce the number of anomalies we remove from the X8 feature column from over 50 returned by the z test method, this approach would bring the number of outliers removed from this column in line with the number of anomalies removed from other columns.
+
+
+
+
+

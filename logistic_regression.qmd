@@ -62,27 +62,27 @@ library(nnet)
 
 ```{r}
 X8_model <- nnet::multinom( label ~ X8, data = train_data) 
-summary(model)$coef
+summary(X8_model)$coef
 ```
 
 ```{r}
 X7_model <- multinom( label ~ X7, data = train_data) 
-summary(model)$coef
+summary(X7_model)$coef
 ```
 
 ```{r}
 X9_model <- multinom( label ~ X9, data = train_data) 
-summary(model)$coef
+summary(X9_model)$coef
 ```
 
 ```{r}
 X3_model <- multinom( label ~ X3, data = train_data) 
-summary(model)$coef
+summary(X3_model)$coef
 ```
 
 ```{r}
 X2_model <- multinom( label ~ X2, data = train_data) 
-summary(model)$coef
+summary(X2_model)$coef
 ```
 
 unfortunetly, mulinom() doesn't give us as helpful a summary as glm() does.
@@ -113,22 +113,22 @@ now lets look at some columns that we expect to perform poorly
 
 ```{r}
 X17_model <- multinom( label ~ X17, data = train_data) 
-summary(model)$coef
+summary(X17_model)$coef
 ```
 
 ```{r}
 X18_model <- multinom( label ~ X18, data = train_data) 
-summary(model)$coef
+summary(X18_model)$coef
 ```
 
 ```{r}
 X19_model <- multinom( label ~ X19, data = train_data) 
-summary(model)$coef
+summary(X19_model)$coef
 ```
 
 ```{r}
 X20_model <- multinom( label ~ X20, data = train_data) 
-summary(model)$coef
+summary(X20_model)$coef
 ```
 
 ```{r}
@@ -197,8 +197,16 @@ a 85% accuracy with a low p value is pretty good for our first model. We can see
 lets use this output to calculate precision recall and f1 score:
 
 ```{r}
+overall_metrics <- conf_matrix$overall
+overall_metrics
+```
+```{r}
 class_metrics <- conf_matrix$byClass
+class_metrics <- as.data.frame(class_metrics) %>% transpose()
+class_metrics
+```
 
+```{r}
 for (class in 1:nrow(class_metrics)) {
   cat("\nClass:", rownames(class_metrics)[class], "\n")
   cat("Sensitivity (Recall):", round(class_metrics[class, "Sensitivity"], 4), "\n")
@@ -206,6 +214,8 @@ for (class in 1:nrow(class_metrics)) {
   cat("Precision (Positive Predictive Value):", round(class_metrics[class, "Pos Pred Value"], 4), "\n")
   cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
 }
+
+
 
 ```
 
@@ -601,7 +611,7 @@ class_weights
 ```{r}
 
 weighted_model <- multinom(label ~ ., data = train_data, 
-                          weights = weights,
+                          weights = class_weights,
                           trace = FALSE)
 
 

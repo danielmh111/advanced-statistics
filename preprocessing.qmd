@@ -11,7 +11,6 @@ In this section, using what we learned in the EDA section, we will take steps to
 
 we are going to clean the dataframe by removing all rows with null values - as we found earlier, there are only a very small number of null cases so we are not worried about distorting any trends by removing these rows and it garauntees us a clean dataset to work with.
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   warning = FALSE,
@@ -31,7 +30,6 @@ library(skimr)
 
 ```
 
-
 ```{r}
 
 data <- read_csv("Data(2).csv")
@@ -44,7 +42,6 @@ cat("\n\n", "Original rows:", nrow(data), "\n")
 cat("Rows after removing missing values:", nrow(data_clean), "\n")
 cat("Rows removed:", nrow(data) - nrow(data_clean), "\n")
 ```
-
 
 ```{r}
 # this is mostly the same code as in the eda file
@@ -93,6 +90,7 @@ summary(data_x8)
 
 
 ```
+
 there are no negative values or values equal to 0, so its going to be safe to directly apply a log transformation to the column
 
 ```{r}
@@ -112,7 +110,8 @@ ggplot(data_x8_long, aes(x = value)) +
   labs(x = "Value", y = "Count", title = "Histograms of All transforms of X8")
 
 ```
-these look much more symetrical to me, even though ther is still some skewness. We will proceed using the natural log transform - if I have time I can come back and calculate a proper test for normality to justify this. 
+
+these look much more symetrical to me, even though ther is still some skewness. We will proceed using the natural log transform - if I have time I can come back and calculate a proper test for normality to justify this.
 
 ```{r}
 data_clean <- data_clean %>% mutate(X8=log(X8))
@@ -144,6 +143,7 @@ ggplot(z_outlier_count, aes(x = reorder(feature, count), y = count)) +
        x = "Feature", y = "Count of outliers") +
   theme_minimal()
 ```
+
 Suprisingly, there are still far more outliers in X8 than anyother column. It has been reduced from 51 to 46 which shows that the normalization was somewhat effective.
 
 ```{r}
@@ -168,6 +168,7 @@ extreme_outliers <- boxscore_outliers %>%
 cat("\nrstatix boxscore X8 outliers:", nrow(boxscore_outliers), "\n")
 cat("rstatix extreme boxscore X8 outliers:", nrow(extreme_outliers))
 ```
+
 Using the "extreme" threshold for this IQR test feels a little arbritary to me. So I will proceed with using the z score test approach. Before removing, I want to check if the anomalies are skewed toward any particular label value
 
 ```{r}
@@ -191,6 +192,7 @@ outlier_label_counts
 
 
 ```
+
 the original distribution of labels was pretty much uniform, so ideally we would get about 50 of each label being removed. However, in a dataset of 2980 rows, im confident that removing these rows is not going to change the distribution of labels in the data significantly, and I don't believe that the label of these anomalies is following a pattern.
 
 ```{r}
@@ -235,7 +237,6 @@ class_comparison
 
 lgtm
 
-
 next step is scaling and centering the data
 
 ```{r}
@@ -248,7 +249,6 @@ data_scaled <- data_no_outliers %>%
 
 skim(data_scaled)
 ```
-
 
 ```{r}
 
