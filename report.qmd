@@ -48,14 +48,18 @@ knitr::opts_chunk$set(
   out.width = "80%"
 )
 ```
-```{r}
+```{r load-libraries}
 library(tidyverse)
 library(carat)
+library(caret)
 library(skimr)
 library(kableExtra)
 library(reshape2)
 library(viridis)
 library(hopkins)
+library(mnet)
+library(nnet)
+library(pROC)
 ```
 
 # Introduction
@@ -340,7 +344,7 @@ hopkins_table <- df %>%
   kable(
     caption = "Hopkins Statistic Scores", 
     digits = 7, 
-    align = "l",
+    align = "lc", # left align the column names, but centre the scores
     booktabs = TRUE,
     na="-"
   ) %>% 
@@ -378,16 +382,492 @@ The PCA showed the four labels had some clustered structure, but also some signi
 
 ## Supervised Learning Results
 
+### Logistic Regression
+
+```{r simple-logistic-regression-confusion-matrix}
+
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label) # factor is like an enum, means A,B,C,D are read as categories not strings
+set.seed(121) # set the seed at the top so the entire doc is reproducable
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>% 
+  createDataPartition(p = 0.8, list = FALSE) # create 80:20 split for train:test
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+simple_logreg_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data,
+    trace = FALSE
+    )
+simple_logreg_predictions <- predict(simple_logreg_model, test_data, type = "class")
+simple_logreg_conf_matrix = confusionMatrix(simple_logreg_predictions, test_data$label)
+simple_logreg_conf_df <- as.data.frame(simple_logreg_conf_matrix$table)
+
+simple_logreg_conf_df <- simple_logreg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+simp_logreg_confm_table <- simple_logreg_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+simp_logreg_confm_table
+
+
+simp_logreg_overall_stats <- data.frame(
+  Statistic = names(simple_logreg_conf_matrix$overall),
+  Value = simple_logreg_conf_matrix$overall
+)
+
+
+simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+simp_logreg_overall_stats_table
+
+
+
+simp_logreg_byClass_stats <- as.data.frame(simple_logreg_conf_matrix$byClass)
+simp_logreg_byClass_stats <- t(simp_logreg_byClass_stats) # I want the class names to be columns not rows
+simp_logreg_byClass_stats <- as.data.frame(simp_logreg_byClass_stats)
+
+
+simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+simp_logreg_byClass_stats_table
+```
+
+```{r simple-logistic-regression-roc-curve, fig.cap="**Simple Logistic Regression ROC Plot:** *ROC plot for Class D vs Not Class D*"}
+simple_logreg_probabilities <- predict(simple_logreg_model, test_data, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
+is_class_d <- ifelse(test_data$label =="D", 1, 0)
+class_d_probs <- as.data.frame(simple_logreg_probabilities)$D
+
+# these produce a 1 and 0 for true and false for the actual value of class D for each row in data, and then the probability of each row being class d according to the model
+
+roc <- roc(is_class_d, class_d_probs)
+auc_value <- auc(roc)
+
+plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
+     col = "blue", lwd = 2, 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)")
+
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+
+```{r logistic-regression-feature-selection}
+train_data_logreg_fs1 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+test_data_logreg_fs1 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+logreg_featselection_1_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_logreg_fs1,
+    trace = FALSE
+  )
+logreg_featselection_1_predictions <- predict(logreg_featselection_1_model, test_data_logreg_fs1, type = "class") # using type-class gives a prediction of the 
+logreg_featselection_1_conf_matrix = confusionMatrix(logreg_featselection_1_predictions, test_data_logreg_fs1$label)
+
+logreg_featselection_1_conf_df <- as.data.frame(logreg_featselection_1_conf_matrix$table)
+
+logreg_featselection_1_conf_df <- logreg_featselection_1_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+logreg_featselection_1_confm_table <- logreg_featselection_1_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+logreg_featselection_1_confm_table
+
+
+logreg_featselection_1_overall_stats <- data.frame(
+  Statistic = names(logreg_featselection_1_conf_matrix$overall),
+  Value = logreg_featselection_1_conf_matrix$overall
+)
+
+
+logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+logreg_featselection_1_overall_stats_table
+
+
+
+logreg_featselection_1_byClass_stats <- as.data.frame(logreg_featselection_1_conf_matrix$byClass)
+logreg_featselection_1_byClass_stats <- t(logreg_featselection_1_byClass_stats) # I want the class names to be columns not rows
+logreg_featselection_1_byClass_stats <- as.data.frame(logreg_featselection_1_byClass_stats)
+
+
+logreg_featselection_1_byClass_stats_table <- logreg_featselection_1_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression with selected features Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+logreg_featselection_1_byClass_stats_table
+
+
+
+
+
+
+train_data_logreg_fs2 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+test_data_logreg_fs2 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+logreg_featselection_2_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_logreg_fs2,
+    trace = FALSE
+  )
+logreg_featselection_2_predictions <- predict(logreg_featselection_2_model, test_data_logreg_fs2, type = "class") # using type-class gives a prediction of the 
+logreg_featselection_2_conf_matrix = confusionMatrix(logreg_featselection_2_predictions, test_data_logreg_fs2$label)
+
+logreg_featselection_2_conf_df <- as.data.frame(logreg_featselection_2_conf_matrix$table)
+
+logreg_featselection_2_conf_df <- logreg_featselection_2_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+logreg_featselection_2_confm_table <- logreg_featselection_2_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+logreg_featselection_2_confm_table
+
+
+logreg_featselection_2_overall_stats <- data.frame(
+  Statistic = names(logreg_featselection_2_conf_matrix$overall),
+  Value = logreg_featselection_2_conf_matrix$overall
+)
+
+
+logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+logreg_featselection_2_overall_stats_table
+
+
+
+logreg_featselection_2_byClass_stats <- as.data.frame(logreg_featselection_2_conf_matrix$byClass)
+logreg_featselection_2_byClass_stats <- t(logreg_featselection_2_byClass_stats) # I want the class names to be columns not rows
+logreg_featselection_2_byClass_stats <- as.data.frame(logreg_featselection_2_byClass_stats)
+
+
+logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression with selected features Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+logreg_featselection_2_byClass_stats_table
+```
+
+
+
+```{r weighted-logistic-regression}
+class_weights <- train_data %>%
+  count(label) %>%
+  mutate(weight = 1/n, # n just always gets the value for number of observations
+         weight = weight/sum(weight) * n()) # regularize using the mean
+
+weights_vector <- train_data %>%
+  left_join(class_weights, by = "label") %>%
+  pull(weight)  # gets just the weight column as a vector
+
+weighted_model <- multinom(label ~ ., data = train_data, 
+                          weights = weights_vector,
+                          trace = FALSE)
+
+weighted_pred <- predict(weighted_model, test_data)
+weighted_logreg_conf_matrix <- confusionMatrix(weighted_pred, test_data$label)
+
+weighted_logreg_conf_df <- as.data.frame(weighted_logreg_conf_matrix$table)
+
+weighted_logreg_conf_df <- weighted_logreg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+weighted_logreg_confm_table <- weighted_logreg_conf_df %>%
+  kable(
+    caption = "Weighted Logistic Regression Confusion Matrix", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+weighted_logreg_confm_table
+
+
+weighted_logreg_overall_stats <- data.frame(
+  Statistic = names(weighted_logreg_conf_matrix$overall),
+  Value = simple_logreg_conf_matrix$overall
+)
+
+
+weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
+  kable(
+    caption = "Weighted Logistic Regression Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+weighted_logreg_overall_stats_table
+
+
+
+weighted_logreg_byClass_stats <- as.data.frame(weighted_logreg_conf_matrix$byClass)
+weighted_logreg_byClass_stats <- t(weighted_logreg_byClass_stats) # I want the class names to be columns not rows
+weighted_logreg_byClass_stats <- as.data.frame(weighted_logreg_byClass_stats)
+
+
+weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Weighted Logistic Regression Statistics by Class",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+weighted_logreg_byClass_stats_table
+
+```
+
+```{r regularized-logistic-regression-summary-table}
+decay_values <- c(0.001, 0.01, 0.1, 0.5, 1, 2, 10) # these are the regularization parameters we are going to try
+
+# creating a df to store the results of all models - will turn this into the report table
+results_df <- data.frame(
+  Decay = as.character(decay_values),
+  Accuracy = numeric(length(decay_values)),
+  Kappa = numeric(length(decay_values)),
+  F1_Class_A = numeric(length(decay_values)),
+  F1_Class_B = numeric(length(decay_values)),
+  F1_Class_C = numeric(length(decay_values)),
+  F1_Class_D = numeric(length(decay_values))
+)
+
+for (i in 1:length(decay_values)) {
+  decay <- decay_values[i]
+  model <- multinom(label ~ ., data = train_data, 
+                   decay = decay, 
+                   trace = FALSE)
+  predictions <- predict(model, test_data)
+  conf_matrix <- confusionMatrix(predictions, test_data$label)
+  
+  results_df$Accuracy[i] <- conf_matrix$overall["Accuracy"]
+  results_df$Kappa[i] <- conf_matrix$overall["Kappa"]
+  
+  class_metrics <- conf_matrix$byClass
+  class_names <- rownames(class_metrics)
+  
+  for (j in 1:length(class_names)) {
+    class_name <- class_names[j]
+    class_letter <- substr(class_name, nchar(class_name), nchar(class_name))
+    col_name <- paste0("F1_Class_", class_letter)
+    results_df[i, col_name] <- class_metrics[j, "F1"]
+  }
+  
+  if (i == 1 || conf_matrix$overall["Accuracy"] > best_accuracy) {
+    best_accuracy <- conf_matrix$overall["Accuracy"]
+    best_decay <- decay
+    best_conf_matrix <- conf_matrix
+    best_predictions <- predictions
+  }
+}
+
+
+decay_summary_table <- results_df %>%
+  kable(
+    caption = "Logistic Regression Performance with Different Regularization Parameters",
+    col.names = c("Decay", "Accuracy", "Kappa", 
+                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+    digits = 4,
+    align = "lcccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+decay_summary_table
+```
+
+```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**"}
+
+ggplot(results_df %>% mutate(Decay = as.numeric(Decay)) %>% pivot_longer(cols = c(Accuracy, F1_Class_A, F1_Class_B, F1_Class_C, F1_Class_D),
+                                  names_to = "Metric", values_to = "Value")) +
+  geom_line(aes(x = Decay, y = Value, color = Metric)) +
+  geom_point(aes(x = Decay, y = Value, color = Metric)) +
+  scale_x_log10() +  # Log scale for better visualization of decay range
+  labs(title = "Effect of Regularization on Logistic Regression Performance",
+       x = "Decay Parameter (log scale)",
+       y = "Performance Metric Value") +
+  theme_minimal()
+```
+```{r regularized-logistic-regression-conf-matrix}
+
+best_reg_conf_df <- as.data.frame(best_conf_matrix$table)
+best_reg_conf_df <- best_reg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+best_reg_conf_table <- best_reg_conf_df %>%
+  kable(
+    caption = paste("Confusion Matrix for Best Regularized Logistic Regression Model (Decay =", best_decay, ")"),
+    digits = 0,
+    align = "c",
+    booktabs = TRUE
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  )
+best_reg_conf_table
+
+```
+
 logistic regression was not great. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
 
+### Random Forest
+
+
+
 The random forest performed well without any configuration. feature selection was not effective. still struggled at seperating class D. mtry was tuned. 
+
+### SVM
 
 svm was good but not as good as random forest. lots of tuning. feature selection was uneffective
 
 
 ## Unsupervised Learning Results
 
+### Agglomerative Hierarchical Clustering
+
 ahc was good not great.
+
+### Gaussian Mixed Model Clustering
 
 Gaussian mixed model clustering performed very well. dimensionality reduction using factor analysis was slightly effective. 
 
