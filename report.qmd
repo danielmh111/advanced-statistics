@@ -21,6 +21,7 @@ format:
       - columnsep=7mm    
       - heightrounded
     dev: pdf
+    df-print: kable
     natbiboptions: "authoryear,round"
     include-in-header:
       text: |
@@ -110,13 +111,15 @@ Bootstrap sampling was used to create a larger dataset so that the performance o
 
 find distributions within each feature, look for correlations between features, scatter between plots that features that have high correlation to the catagorical label or another feature, use PCA to visualize all data together, calculate hopkins statistic to determine the clustering tendency of the data
 
+\onecolumn
+
 ```{r feature-data-descriptions}
 #| cache: true
 
 data <- read_csv("Data(2).csv")
 
 desc <- skim(data)
-desc %>% 
+desc <- desc %>% 
   select(
     skim_variable, 
     n_missing, 
@@ -151,15 +154,19 @@ desc_table <- desc %>%
     align = "c",
     booktabs = TRUE,
     na="-",
-    longtable = FALSE
+    longtable = T
   ) %>% 
   kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
-    font_size = 9
+    font_size = 9,
+    full_width = FALSE
   )
 
-full_width_table(desc_table)
+desc_table
 ```
+
+\twocolumn
+
 
 This description of the predictive features shows the range of scales, ranging by and order of magnitude. Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
 
@@ -418,14 +425,15 @@ hopkins_table <- df %>%
     align = "lc", # left align the column names, but centre the scores
     booktabs = TRUE,
     na="-",
-    longtable = FALSE
+    longtable = FALSE,
+    format = "latex"
   ) %>% 
   kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
     font_size = 9
   )
 
-full_width_table(hopkins_table)
+hopkins_table
 ```
 
 We can see there is a very high clustering tendency for various treatments of the data. The statistic remains high when the label is removed from the feature set. This is promising for persuing unsupervised approaches, since it confirms that the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If we saw the score drop when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
