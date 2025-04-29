@@ -15,7 +15,7 @@ format:
     geometry:
       - paper=a4paper    
       - top=15mm         
-      - bottom=15mm      
+      - bottom=25mm      
       - left=15mm        
       - right=15mm       
       - columnsep=7mm    
@@ -532,6 +532,7 @@ simp_logreg_confm_table <- simple_logreg_conf_df %>%
     digits = 7, 
     align = "c",
     booktabs = TRUE,
+    format = "latex",
     na="-"
   ) %>% 
   kable_styling(
@@ -547,7 +548,7 @@ simp_logreg_confm_table <- simple_logreg_conf_df %>%
   #   4
   # )
 
-full_width_table(simp_logreg_confm_table)
+simp_logreg_confm_table
 
 
 simp_logreg_overall_stats <- data.frame(
@@ -561,6 +562,7 @@ simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
     caption = "Simple Logistic Regression Overall Statistics",
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
+    format = "latex",
     digits = 4,
     align = "lc",
     booktabs = TRUE
@@ -570,7 +572,7 @@ simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(simp_logreg_overall_stats_table)
+simp_logreg_overall_stats_table
 
 
 
@@ -585,6 +587,7 @@ simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
     caption = "Simple Logistic Regression Statistics by Class",
     digits = 4,
     align = "lccccc",
+    format = "latex",
     longtable = FALSE,
     booktabs = TRUE
   ) %>%
@@ -593,8 +596,9 @@ simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(simp_logreg_byClass_stats_table)
+simp_logreg_byClass_stats_table
 ```
+
 
 ```{r simple-logistic-regression-roc-curve, fig.cap="**Simple Logistic Regression ROC Plot:** *ROC plot for Class D vs Not Class D*"}
 #| cache: true
@@ -640,6 +644,7 @@ logreg_featselection_1_confm_table <- logreg_featselection_1_conf_df %>%
     digits = 7, 
     align = "c",
     booktabs = TRUE,
+    format = "latex",
     longtable = FALSE,
     na="-"
   ) %>% 
@@ -656,7 +661,7 @@ logreg_featselection_1_confm_table <- logreg_featselection_1_conf_df %>%
   #   4
   # )
 
-full_width_table(logreg_featselection_1_confm_table)
+logreg_featselection_1_confm_table
 
 
 logreg_featselection_1_overall_stats <- data.frame(
@@ -672,6 +677,7 @@ logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_sta
     digits = 4,
     align = "lc",
     longtable = FALSE,
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -679,7 +685,7 @@ logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_sta
     font_size = 9
   )
 
-full_width_table(logreg_featselection_1_overall_stats_table)
+logreg_featselection_1_overall_stats_table
 
 
 
@@ -693,6 +699,7 @@ logreg_featselection_1_byClass_stats_table <- logreg_featselection_1_byClass_sta
   kable(
     caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Statistics by Class",
     longtable = FALSE,
+    format = "latex",
     digits = 4,
     align = "lccccc",
     booktabs = TRUE
@@ -702,7 +709,7 @@ logreg_featselection_1_byClass_stats_table <- logreg_featselection_1_byClass_sta
     font_size = 9
   )
 
-full_width_table(logreg_featselection_1_byClass_stats_table)
+logreg_featselection_1_byClass_stats_table
 
 
 
@@ -728,6 +735,7 @@ logreg_featselection_2_confm_table <- logreg_featselection_2_conf_df %>%
     caption = "Simple Logistic Regression with selected features (X8,X9 removed) Confusion Matrix", 
     digits = 7, 
     longtable = FALSE,
+    format = "latex",
     align = "c",
     booktabs = TRUE,
     na="-"
@@ -745,7 +753,7 @@ logreg_featselection_2_confm_table <- logreg_featselection_2_conf_df %>%
   #   4
   # )
 
-full_width_table(logreg_featselection_2_confm_table)
+logreg_featselection_2_confm_table
 
 
 logreg_featselection_2_overall_stats <- data.frame(
@@ -760,6 +768,7 @@ logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_sta
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
     digits = 4,
+    format = "latex",
     align = "lc",
     booktabs = TRUE
   ) %>%
@@ -768,7 +777,7 @@ logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_sta
     font_size = 9
   )
 
-full_width_table(logreg_featselection_2_overall_stats_table)
+logreg_featselection_2_overall_stats_table
 
 
 
@@ -784,6 +793,7 @@ logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_sta
     digits = 4,
     longtable = FALSE,
     align = "lccccc",
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -791,7 +801,7 @@ logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_sta
     font_size = 9
   )
 
-full_width_table(logreg_featselection_2_byClass_stats_table)
+logreg_featselection_2_byClass_stats_table
 ```
 
 ```{r weighted-logistic-regression}
@@ -821,6 +831,7 @@ weighted_logreg_confm_table <- weighted_logreg_conf_df %>%
   kable(
     caption = "Weighted Logistic Regression Confusion Matrix", 
     digits = 7, 
+    format = "latex",
     align = "c",
     longtable = FALSE,
     booktabs = TRUE,
@@ -839,7 +850,7 @@ weighted_logreg_confm_table <- weighted_logreg_conf_df %>%
   #   4
   # )
 
-full_width_table(weighted_logreg_confm_table)
+weighted_logreg_confm_table
 
 
 weighted_logreg_overall_stats <- data.frame(
@@ -853,6 +864,7 @@ weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
     caption = "Weighted Logistic Regression Overall Statistics",
     col.names = c("Statistic", "Value"),
     digits = 4,
+    format = "latex",
     longtable = FALSE,
     align = "lc",
     booktabs = TRUE
@@ -862,7 +874,7 @@ weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(weighted_logreg_overall_stats_table)
+weighted_logreg_overall_stats_table
 
 
 
@@ -877,6 +889,7 @@ weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
     caption = "Weighted Logistic Regression Statistics by Class",
     digits = 4,
     longtable = FALSE,
+    format = "latex",
     align = "lccccc",
     booktabs = TRUE
   ) %>%
@@ -885,7 +898,7 @@ weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(weighted_logreg_byClass_stats_table)
+weighted_logreg_byClass_stats_table
 
 ```
 
@@ -943,13 +956,14 @@ decay_summary_table <- results_df %>%
     digits = 4,
     longtable = FALSE,
     align = "lcccccc",
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
     font_size = 9
   )
-full_width_table(decay_summary_table)
+decay_summary_table
 ```
 
 ```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**"}
@@ -976,6 +990,7 @@ best_reg_conf_table <- best_reg_conf_df %>%
     caption = paste("Confusion Matrix for Best Regularized Logistic Regression Model (Decay =", best_decay, ")"),
     digits = 0,
     longtable = FALSE,
+    format = "latex",
     align = "c",
     booktabs = TRUE
   ) %>% 
@@ -986,7 +1001,7 @@ best_reg_conf_table <- best_reg_conf_df %>%
   add_header_above(
     c(" " = 1, "Reference" = 4)
   )
-full_width_table(best_reg_conf_table)
+best_reg_conf_table
 
 ```
 
@@ -1016,6 +1031,7 @@ rf_confm_table <- rf_conf_df %>%
     digits = 7, 
     longtable = FALSE,
     align = "c",
+    format = "latex",
     booktabs = TRUE,
     na="-"
   ) %>% 
@@ -1032,7 +1048,7 @@ rf_confm_table <- rf_conf_df %>%
   #   4
   # )
 
-full_width_table(rf_confm_table)
+rf_confm_table
 
 
 rf_overall_stats <- data.frame(
@@ -1047,6 +1063,7 @@ rf_overall_stats_table <- rf_overall_stats %>%
     col.names = c("Statistic", "Value"),
     digits = 4,
     longtable = FALSE,
+    format = "latex",
     align = "lc",
     booktabs = TRUE
   ) %>%
@@ -1055,7 +1072,7 @@ rf_overall_stats_table <- rf_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_overall_stats_table)
+rf_overall_stats_table
 
 
 
@@ -1069,6 +1086,7 @@ rf_byClass_stats_table <- rf_byClass_stats %>%
   kable(
     caption = "Basic Random Forest Statistics by Class",
     longtable = FALSE,
+    format = "latex",
     digits = 4,
     align = "lccccc",
     booktabs = TRUE
@@ -1078,7 +1096,7 @@ rf_byClass_stats_table <- rf_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_byClass_stats_table)
+rf_byClass_stats_table
 ```
 
 ```{r random-forest-base-feature-importance-table}
@@ -1091,6 +1109,7 @@ feature_importance_table <- importance_values %>%
     caption = "Basic Random Forest Feature Importance", 
     digits = 3, 
     align = "c",
+    format = "latex",
     booktabs = TRUE,
     longtable = FALSE,
     na="-"
@@ -1100,7 +1119,7 @@ feature_importance_table <- importance_values %>%
     font_size = 9
   )
 
-full_width_table(feature_importance_table)
+feature_importance_table
 ```
 
 ```{r random-forest-remove-unimportant-features}
@@ -1130,6 +1149,7 @@ rf_fs_1_confm_table <- rf_fs_1_conf_df %>%
   kable(
     caption = "Random Forest (5 least important features removed) Confusion Matrix", 
     digits = 7, 
+    format = "latex",
     align = "c",
     booktabs = TRUE,
     longtable = FALSE,
@@ -1148,7 +1168,7 @@ rf_fs_1_confm_table <- rf_fs_1_conf_df %>%
   #   4
   # )
 
-full_width_table(rf_fs_1_confm_table)
+rf_fs_1_confm_table
 
 
 rf_fs_1_overall_stats <- data.frame(
@@ -1164,6 +1184,7 @@ rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
     digits = 4,
     align = "lc",
     longtable = FALSE,
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -1171,7 +1192,7 @@ rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_1_overall_stats_table)
+rf_fs_1_overall_stats_table
 
 
 
@@ -1185,6 +1206,7 @@ rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
   kable(
     caption = "Random Forest (5 least important features removed) Statistics by Class",
     digits = 4,
+    format = "latex",
     longtable = FALSE,
     align = "lccccc",
     booktabs = TRUE
@@ -1194,7 +1216,7 @@ rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_1_byClass_stats_table)
+rf_fs_1_byClass_stats_table
 ```
 
 ```{r random-forest-remove-unimportant-features-feature-importance}
@@ -1209,6 +1231,7 @@ rf_fs_1_feature_importance_table <- rf_fs_1_importance_values %>%
     align = "c",
     booktabs = TRUE,
     longtable = FALSE,
+    format = "latex",
     na="-"
   ) %>% 
   kable_styling(
@@ -1216,7 +1239,7 @@ rf_fs_1_feature_importance_table <- rf_fs_1_importance_values %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_1_feature_importance_table)
+rf_fs_1_feature_importance_table
 ```
 
 ```{r random-forest-remove-important-features}
@@ -1246,6 +1269,7 @@ rf_fs_2_confm_table <- rf_fs_2_conf_df %>%
   kable(
     caption = "Random Forest (5 least important features removed) Confusion Matrix", 
     digits = 7, 
+    format = "latex",
     longtable = FALSE,
     align = "c",
     booktabs = TRUE,
@@ -1264,7 +1288,7 @@ rf_fs_2_confm_table <- rf_fs_2_conf_df %>%
   #   4
   # )
 
-full_width_table(rf_fs_2_confm_table)
+rf_fs_2_confm_table
 
 
 rf_fs_2_overall_stats <- data.frame(
@@ -1279,6 +1303,7 @@ rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
     col.names = c("Statistic", "Value"),
     digits = 4,
     longtable = FALSE,
+    format = "latex",
     align = "lc",
     booktabs = TRUE
   ) %>%
@@ -1287,7 +1312,7 @@ rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_2_overall_stats_table)
+rf_fs_2_overall_stats_table
 
 
 
@@ -1301,6 +1326,7 @@ rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
   kable(
     caption = "Random Forest (5 least important features removed) Statistics by Class",
     digits = 4,
+    format = "latex",
     longtable = FALSE,
     align = "lccccc",
     booktabs = TRUE
@@ -1310,7 +1336,7 @@ rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_2_byClass_stats_table)
+rf_fs_2_byClass_stats_table
 ```
 
 ```{r random-forest-remove-important-features-feature-importance}
@@ -1323,6 +1349,7 @@ rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
     caption = "Random Forest (5 least important features removed) Feature Importance", 
     digits = 3, 
     longtable = FALSE,
+    format = "latex",
     align = "c",
     booktabs = TRUE,
     na="-"
@@ -1332,7 +1359,7 @@ rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
     font_size = 9
   )
 
-full_width_table(rf_fs_2_feature_importance_table)
+rf_fs_2_feature_importance_table
 ```
 
 ```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**"}
@@ -1381,6 +1408,7 @@ rf_tuned_confm_table <- rf_tuned_conf_df %>%
     longtable = FALSE,
     align = "c",
     booktabs = TRUE,
+    format = "latex",
     na="-"
   ) %>% 
   kable_styling(
@@ -1396,7 +1424,7 @@ rf_tuned_confm_table <- rf_tuned_conf_df %>%
   #   4
   # )
 
-full_width_table(rf_tuned_confm_table)
+rf_tuned_confm_table
 
 
 rf_tuned_overall_stats <- data.frame(
@@ -1411,6 +1439,7 @@ rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
     longtable = FALSE,
     col.names = c("Statistic", "Value"),
     digits = 4,
+    format = "latex",
     align = "lc",
     booktabs = TRUE
   ) %>%
@@ -1419,7 +1448,7 @@ rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_tuned_overall_stats_table)
+rf_tuned_overall_stats_table
 
 
 
@@ -1433,6 +1462,7 @@ rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
   kable(
     caption = "Tuned Random Forest Statistics by Class",
     digits = 4,
+    format = "latex",
     longtable = FALSE,
     align = "lccccc",
     booktabs = TRUE
@@ -1442,7 +1472,7 @@ rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(rf_tuned_byClass_stats_table)
+rf_tuned_byClass_stats_table
 
 ```
 
@@ -1567,6 +1597,7 @@ svm_kernel_summary_table <- results_df %>%
                   "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
     digits = 4,
     longtable = FALSE,
+    format = "latex",
     align = "lcccccc",
     booktabs = TRUE
   ) %>%
@@ -1574,7 +1605,7 @@ svm_kernel_summary_table <- results_df %>%
     latex_options = c("striped", "hold_position", "scale_down"),
     font_size = 9
   )
-full_width_table(svm_kernel_summary_table)
+svm_kernel_summary_table
 ```
 
 ```{r svm-tune-hyperparameters, fig.cap="**Hyperparameter Affect on SVM Performance**"}
@@ -1889,6 +1920,7 @@ gmm_confm_table <- gmm_conf_df %>%
     digits = 7, 
     align = "c",
     longtable = FALSE,
+    format = "latex",
     booktabs = TRUE,
     na="-"
   ) %>% 
@@ -1905,7 +1937,7 @@ gmm_confm_table <- gmm_conf_df %>%
   #   4
   # )
 
-full_width_table(gmm_confm_table)
+gmm_confm_table
 
 
 gmm_overall_stats <- data.frame(
@@ -1919,6 +1951,7 @@ gmm_overall_stats_table <- gmm_overall_stats %>%
     caption = "Gaussian Mixture Model Overall Statistics",
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
+    format = "latex",
     digits = 4,
     align = "lc",
     booktabs = TRUE
@@ -1928,7 +1961,7 @@ gmm_overall_stats_table <- gmm_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(gmm_overall_stats_table)
+gmm_overall_stats_table
 
 
 
@@ -1944,6 +1977,7 @@ gmm_byClass_stats_table <- gmm_byClass_stats %>%
     digits = 4,
     longtable = FALSE,
     align = "lccccc",
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -1951,7 +1985,7 @@ gmm_byClass_stats_table <- gmm_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(gmm_byClass_stats_table)
+gmm_byClass_stats_table
 
 ```
 
@@ -2038,6 +2072,7 @@ gmm_comparison_table <- gmm_comparison %>%
     longtable = FALSE,
     align = "lccccccr",
     booktabs = TRUE,
+    format = "latex",
     row.names = FALSE
   ) %>%
   kable_styling(
@@ -2046,7 +2081,7 @@ gmm_comparison_table <- gmm_comparison %>%
   ) 
 
 
-full_width_table(gmm_comparison_table)
+gmm_comparison_table
 ```
 
 The best performing model did not use regularization. 
@@ -2156,6 +2191,7 @@ gmm_fa_confm_table <- gmm_fa_conf_df %>%
     digits = 7, 
     longtable = FALSE,
     align = "c",
+    format = "latex",
     booktabs = TRUE,
     na="-"
   ) %>% 
@@ -2172,7 +2208,7 @@ gmm_fa_confm_table <- gmm_fa_conf_df %>%
   #   4
   # )
 
-full_width_table(gmm_fa_confm_table)
+gmm_fa_confm_table
 
 
 gmm_fa_overall_stats <- data.frame(
@@ -2188,6 +2224,7 @@ gmm_fa_overall_stats_table <- gmm_fa_overall_stats %>%
     digits = 4,
     longtable = FALSE,
     align = "lc",
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -2195,7 +2232,7 @@ gmm_fa_overall_stats_table <- gmm_fa_overall_stats %>%
     font_size = 9
   )
 
-full_width_table(gmm_fa_overall_stats_table)
+gmm_fa_overall_stats_table
 
 
 
@@ -2210,6 +2247,7 @@ gmm_fa_byClass_stats_table <- gmm_fa_byClass_stats %>%
     caption = "Gaussian Mixture Model Statistics by Class",
     digits = 4,
     longtable = FALSE,
+    format = "latex",
     align = "lccccc",
     booktabs = TRUE
   ) %>%
@@ -2218,7 +2256,7 @@ gmm_fa_byClass_stats_table <- gmm_fa_byClass_stats %>%
     font_size = 9
   )
 
-full_width_table(gmm_fa_byClass_stats_table)
+gmm_fa_byClass_stats_table
 
 ```
 
@@ -2262,6 +2300,7 @@ uncertainty_table <- cluster_composition %>%
     digits = 4,
     longtable = FALSE,
     # align = "lccccc",
+    format = "latex",
     booktabs = TRUE
   ) %>%
   kable_styling(
@@ -2269,7 +2308,7 @@ uncertainty_table <- cluster_composition %>%
     font_size = 9
   )
 
-full_width_table(uncertainty_table)
+uncertainty_table
 ```
 
 
