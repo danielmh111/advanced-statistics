@@ -147,8 +147,10 @@ desc_table <- desc %>%
 
 desc_table
 ```
+
 This description of the predictive features shows the range of scales, ranging by and order of magnitude. Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
 \twocolumn
+
 ## Exploratory Data Analysis Approach
 
 
@@ -239,7 +241,7 @@ ggplot(data_long, aes(x = value, fill = dist_group)) +
 
 ```
 
-The majority of the twenty predictive variables appeared to follow a normal distribution. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance. With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modelling.
+The majority of the 20 predictive variables followed normal distributions. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance. With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modelling.
 
 ```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*"}
 #| cache: true
@@ -297,6 +299,7 @@ boxplot <- ggplot( boxplot_data,  aes(label, Value, colour=label)  ) +
 
 boxplot
 ```
+
 Across the entire dataset, the distribution of labels is uniform, with roughly on quarter of the observations falling into each category.
 
 When the distribution of each feature is observed by class label, we see that some features have significantly different characteristics for each class. In the figure, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives us more insight into which features will be important for building effective models.
@@ -324,7 +327,7 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
     
 ```
 
-It is important that we learn about the structure of the underlying data in order to understand our chances of sucess with unsupervised methods where we do not have the value of the class label to train the model. Using Principle Componant Analysis, we can capture most of the information in the system in one scatter plot. This shows us that there is definitly some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
+It is important to learn about the structure of the underlying data in order to understand the chances of sucess with unsupervised methods. Using Principle Componant Analysis captures most of the information in the system in one scatter plot. This shows us that there is definitly some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
 
 The seperation of the first three classes suggests that there is information in the features that allow the statistical models to decern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
 
@@ -417,9 +420,9 @@ hopkins_table <- df %>%
 hopkins_table
 ```
 
-We can see there is a very high clustering tendency for various treatments of the data[@wrightWillRealHopkins2022]. The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms that the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If we saw the score drop when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
+There is a very high clustering tendency for various treatments of the data[@wrightWillRealHopkins2022]. The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms that the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
 
-Similarly, we see that the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots. This means that even the features with very little correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models.
+Similarly, the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots. This means that even the features with low correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models that do not correspond with the given labels.
 
 Overall, we see from exploritory data analysis that this data contains high amounts of information usable for predictive modelling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that may prevent models from performing well.
 
@@ -460,7 +463,7 @@ Using this method without specifying that there are four values for label might 
 It is also a model that handles the feature correlation well, which allows us to keep in all the collumns that correlate like X7, X8, and X9.
 
 ### Gaussian mixture model clustering, including model seclection, regularization and dimensionality reduction using factor analysis.
-So far while working with this data set, we have struggled to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data.
+So far while working with this data set, it has been challenging to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data.
 
 Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. I think it might have a good chance of performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
 
@@ -470,7 +473,7 @@ Another advantage it has is that it has some flexibility in the geometry of the 
 
 ## Supervised Learning Results
 
-In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]
+In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evalutation can be found in notebooks [@Hill_Advanced-Statistics]
 
 ### Logistic Regression
 
@@ -1399,8 +1402,8 @@ rf_tuned_confm_table
 
 
 rf_tuned_overall_stats <- data.frame(
-  Statistic = names(rf_conf_matrix$overall),
-  Value = rf_conf_matrix$overall
+  Statistic = names(rf_tuned_conf_matrix$overall),
+  Value = rf_tuned_conf_matrix$overall
 )
 
 
@@ -2061,6 +2064,7 @@ The best performing model did not use regularization.
 
 The motivation for using regularization is to help the model perform better when using features that correlate together. Since regularization in fact hindered performance, another approach is to use factor analysis to reduce the dimensionality of the data. 
 Factor analysis is suitable because it is suited to handling the groups of correlated features notable in the EDA results, and because the data is biological in origin. With biological data, there is often an underlying cause, like a gene expression, that can have many measurable implecations, like disease symptoms or physical characteristics. Because we know these mechanisms may exist in the source of our data, factor analysis is a good choice to reduce dimensions while preserving as much information as possible.
+
 ```{r fa-scree-plt, fig.cap="**Scree Plot:** *for Choosing Number of Factors for Dimensionality Reduction*"}
 #| cache: true
 
@@ -2282,6 +2286,143 @@ uncertainty_table <- cluster_composition %>%
 uncertainty_table
 ```
 
+## Bootstrapping
+
+All of the above modelling techniques were repeated on bootstrapped data with a resampling size of 10,000 data points. The results achieved were worse across the board, but some models were affected more than others.
+
+```{r bootstrapping-supervised-results}
+#| cache: true
+
+
+# bootstrap the data, then train all the models and predict, then create one table with the results of all the models
+
+
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label)
+
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>%
+  createDataPartition(p = 0.8, list = FALSE) # create 70:30 split for train:test. choose 70:30 instead of 80:20 since we have lots of data and we are looking to increase the amount of test data for more granular results
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+bootstrap_train_data <- train_data %>% sample_n(size=10000, replace=TRUE)
+bootstrap_test_data <- test_data %>% sample_n(size=10000, replace=TRUE)
+
+
+lr_bootstrap_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data,
+    trace = FALSE
+    )
+
+# svm_bootstrap_model <- svm(
+#   label ~ .,
+#   data = bootstrap_train_data,
+#   kernel = "radial",
+#   cost = optimal_params$C,
+#   gamma = optimal_params$sigma,
+#   scale = FALSE
+# )
+ 
+rf_bootstrap_model <- randomForest(
+  label ~ .,
+  data =bootstrap_train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = 6, # optimal value from tuning with RFTune
+  importance = TRUE,
+)
+
+lr_bootstrap_predictions <- predict(lr_bootstrap_model, bootstrap_test_data)
+# svm_bootstrap_predictions <- predict(svm_bootstrap_model, bootstrap_test_data)
+rf_bootstrap_predictions <- predict(rf_bootstrap_model, bootstrap_test_data)
+
+lr_bootstrap_conf_matrix <- confusionMatrix(lr_bootstrap_predictions, bootstrap_test_data$label)
+# svm_bootstrap_conf_matrix <- confusionMatrix(bootstrap_predictions, bootstrap_test_data$label)
+rf_bootstrap_conf_matrix <- confusionMatrix(rf_bootstrap_predictions, bootstrap_test_data$label)
+
+# get the overall accuracy of each bstrp model from the conf matrix
+lr_bootstrap_acc <- unname((lr_bootstrap_conf_matrix$overall)["Accuracy"])
+# svm_bootstrap_acc <- unname((svm_bootstrap_conf_matrix$overall)["Accuracy"])
+rf_bootstrap_acc <- unname((rf_bootstrap_conf_matrix$overall)["Accuracy"])
+
+
+# get the overall statistics for the original dataset models.
+
+lr_orig_acc <- unname((simple_logreg_conf_matrix$overall)["Accuracy"])
+# svm_orig_acc <- unname((svm_final_conf_matrix$overall)["Accuracy"])
+rf_orig_acc <- unname((rf_tuned_conf_df$overall)["Accuracy"])
+
+
+
+# get the by class stats for each model - we will get the class d f1 score from these
+
+lr_bootstrap_d_f1 <- lr_bootstrap_conf_matrix$byClass[,"F1"]["Class: D"]
+# svm_bootstrap_d_f1 <- svm_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
+rf_bootstrap_d_f1 <- rf_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
+
+
+lr_orig_d_f1 <- simple_logreg_conf_matrix$byClass[,"F1"]["Class: D"]
+# svm_orig_d_f1 <- svm_final_conf_matrix$byClass[, "F1"]["Class: D"]
+rf_orig_d_f1 <- rf_tuned_conf_df$byClass[, "F1"]["Class: D"]
+
+
+
+
+Model <- c("Logistic Regression", "Random Forest") # "Support Vector Machines", "Random Forest")
+original_accuracy <- c(lr_orig_acc, rf_orig_acc) #, svm_orig_acc, rf_orig_acc)
+original_d_f1 <- c(lr_orig_d_f1, rf_orig_d_f1) #, svm_orig_d_f1, rf_orig_d_f1)
+bootstrap_accuracy <- c(lr_bootstrap_acc, rf_bootstrap_acc) #, svm_bootstrap_acc, rf_bootstrap_acc)
+bootstrap_d_f1 <- c(lr_bootstrap_d_f1, rf_bootstrap_d_f1) #, svm_bootstrap_d_f1, rf_bootstrap_d_f1)
+
+comp_df = data.frame(
+  Model,
+  original_accuracy,
+  original_d_f1,
+  bootstrap_accuracy,
+  bootstrap_d_f1
+)
+
+
+
+# comp_df
+
+comparison_table <- comp_df %>% kable(
+    caption = "Comparison of Model Performance on Bootstrapped Data",
+    digits = 4,
+    align = "lcccc",
+    col.names = c("Model", "Accuracy - Original Data", "Class D F1 Score - Original Data", "Accuracy - Bootstrapped Data", "Class D F1 Score - Bootstrapped Data"),
+    format = "latex",
+    longtable = FALSE,
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+comparison_table
+
+
+```
+
+```{r bootstrap-unsupervised-results}
+# bootstrap_features <- bootstrap_data %>% select(-label)
+# bootstrap_labels <- bootstrap_data %>% select(label)
+# 
+# 
+# fitM_bootstrap <- Mclust(bootstrap_features)
+# 
+# 
+# summary(fitM_bootstrap)
+# 
+# BIC_bootstrap <- mclustBIC(bootstrap_features)
+# plot(BIC_bootstrap)
+
+
+
+```
+
 # Discussion
 
 The relative performance of different learning models can give some insight to the underlying structure of the data.
@@ -2308,7 +2449,16 @@ An exciting direction to take forward the success of gmm would be to experiment 
 
 
 # References
+::: {~#refs}
 
+
+---
+nocite: |
+  @Hill_Advanced-Statistics
+---
+
+
+:::
 
 
 
