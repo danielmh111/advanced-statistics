@@ -1,0 +1,22 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Advanced-Statistics
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Daniel Martin
+    family-names: Hill
+    email: danielmartinhill@gmail.com
+identifiers:
+  - type: url
+    value: 'https://github.com/danielmh111/advanced-statistics'
+    description: The URL of version 1.1.0 of the github repository
+repository-code: 'https://github.com/danielmh111/advanced-statistics'
+abstract: >-
+  The code repository for working files and final reports
+  completed for my final assessment of Advanced Statistics -
+  a module of UWE's MSci Data Science programme.

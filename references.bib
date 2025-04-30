@@ -38,6 +38,63 @@
   file = {C:\Users\Daniel\Zotero\storage\WAMXARFD\convert-categorical-variables-to-numeric-in-r.html}
 }
 
+@article{caiESPRITForestParallelClustering2017,
+  title = {{{ESPRIT-Forest}}: {{Parallel}} Clustering of Massive Amplicon Sequence Data in Subquadratic Time},
+  shorttitle = {{{ESPRIT-Forest}}},
+  author = {Cai, Yunpeng and Zheng, Wei and Yao, Jin and Yang, Yujie and Mai, Volker and Mao, Qi and Sun, Yijun},
+  year = {2017},
+  month = apr,
+  journal = {PLOS Computational Biology},
+  volume = {13},
+  number = {4},
+  pages = {e1005518},
+  publisher = {Public Library of Science},
+  issn = {1553-7358},
+  doi = {10.1371/journal.pcbi.1005518},
+  urldate = {2025-04-29},
+  abstract = {The rapid development of sequencing technology has led to an explosive accumulation of genomic sequence data. Clustering is often the first step to perform in sequence analysis, and hierarchical clustering is one of the most commonly used approaches for this purpose. However, it is currently computationally expensive to perform hierarchical clustering of extremely large sequence datasets due to its quadratic time and space complexities. In this paper we developed a new algorithm called ESPRIT-Forest for parallel hierarchical clustering of sequences. The algorithm achieves subquadratic time and space complexity and maintains a high clustering accuracy comparable to the standard method. The basic idea is to organize sequences into a pseudo-metric based partitioning tree for sub-linear time searching of nearest neighbors, and then use a new multiple-pair merging criterion to construct clusters in parallel using multiple threads. The new algorithm was tested on the human microbiome project (HMP) dataset, currently one of the largest published microbial 16S rRNA sequence dataset. Our experiment demonstrated that with the power of parallel computing it is now compu- tationally feasible to perform hierarchical clustering analysis of tens of millions of sequences. The software is available at http://www.acsu.buffalo.edu/{$\sim$}yijunsun/lab/ESPRIT-Forest.html.},
+  langid = {english},
+  keywords = {Algorithms,Hierarchical clustering,Microbiome,Phylogenetic analysis,Ribosomal RNA,Sequence alignment,Taxonomy,Trees},
+  file = {C:\Users\Daniel\Zotero\storage\F482JSPN\Cai et al. - 2017 - ESPRIT-Forest Parallel clustering of massive amplicon sequence data in subquadratic time.pdf}
+}
+
+@article{caiESPRITTreeHierarchicalClustering2011,
+  title = {{{ESPRIT-Tree}}: Hierarchical Clustering Analysis of Millions of {{16S rRNA}} Pyrosequences in Quasilinear Computational Time},
+  shorttitle = {{{ESPRIT-Tree}}},
+  author = {Cai, Yunpeng and Sun, Yijun},
+  year = {2011},
+  month = aug,
+  journal = {Nucleic Acids Research},
+  volume = {39},
+  number = {14},
+  pages = {e95},
+  issn = {0305-1048},
+  doi = {10.1093/nar/gkr349},
+  urldate = {2025-04-29},
+  abstract = {Taxonomy-independent analysis plays an essential role in microbial community analysis. Hierarchical clustering is one of the most widely employed approaches to finding operational taxonomic units, the basis for many downstream analyses. Most existing algorithms have quadratic space and computational complexities, and thus can be used only for small or medium-scale problems. We propose a new online learning-based algorithm that simultaneously addresses the space and computational issues of prior work. The basic idea is to partition a sequence space into a set of subspaces using a partition tree constructed using a pseudometric, then recursively refine a clustering structure in these subspaces. The technique relies on new methods for fast closest-pair searching and efficient dynamic insertion and deletion of tree nodes. To avoid exhaustive computation of pairwise distances between clusters, we represent each cluster of sequences as a probabilistic sequence, and define a set of operations to align these probabilistic sequences and compute genetic distances between them. We present analyses of space and computational complexity, and demonstrate the effectiveness of our new algorithm using a human gut microbiota data set with over one million sequences. The new algorithm exhibits a quasilinear time and space complexity comparable to greedy heuristic clustering algorithms, while achieving a similar accuracy to the standard hierarchical clustering algorithm.},
+  pmcid = {PMC3152367},
+  pmid = {21596775},
+  file = {C:\Users\Daniel\Zotero\storage\KQG2374Y\Cai and Sun - 2011 - ESPRIT-Tree hierarchical clustering analysis of millions of 16S rRNA pyrosequences in quasilinear c.pdf}
+}
+
+@inproceedings{chenXGBoostScalableTree2016,
+  title = {{{XGBoost}}: {{A Scalable Tree Boosting System}}},
+  shorttitle = {{{XGBoost}}},
+  booktitle = {Proceedings of the 22nd {{ACM SIGKDD International Conference}} on {{Knowledge Discovery}} and {{Data Mining}}},
+  author = {Chen, Tianqi and Guestrin, Carlos},
+  year = {2016},
+  month = aug,
+  eprint = {1603.02754},
+  primaryclass = {cs},
+  pages = {785--794},
+  doi = {10.1145/2939672.2939785},
+  urldate = {2025-04-29},
+  abstract = {Tree boosting is a highly effective and widely used machine learning method. In this paper, we describe a scalable end-to-end tree boosting system called XGBoost, which is used widely by data scientists to achieve state-of-the-art results on many machine learning challenges. We propose a novel sparsity-aware algorithm for sparse data and weighted quantile sketch for approximate tree learning. More importantly, we provide insights on cache access patterns, data compression and sharding to build a scalable tree boosting system. By combining these insights, XGBoost scales beyond billions of examples using far fewer resources than existing systems.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning},
+  file = {C\:\\Users\\Daniel\\Zotero\\storage\\AAWQ8AC7\\Chen and Guestrin - 2016 - XGBoost A Scalable Tree Boosting System.pdf;C\:\\Users\\Daniel\\Zotero\\storage\\F94FXZVW\\1603.html}
+}
+
 @misc{ConvertCategoricalVariables2017,
   type = {Forum Post},
   title = {Convert Categorical Variables to Numeric in {{R}}},
@@ -85,6 +142,41 @@
   file = {C:\Users\Daniel\Zotero\storage\49IF92MW\gaussian-mixture-model.html}
 }
 
+@book{geronHandsonMachineLearning2023,
+  title = {Hands-on Machine Learning with {{Scikit-Learn}}, {{Keras}} and {{TensorFlow}}: Concepts, Tools, and Techniques to Build Intelligent Systems},
+  shorttitle = {Hands-on Machine Learning with {{Scikit-Learn}}, {{Keras}} and {{TensorFlow}}},
+  author = {G{\'e}ron, Aur{\'e}lien},
+  year = {2023},
+  edition = {Third edition},
+  publisher = {O'Reilly Media, Inc},
+  address = {Beijing},
+  abstract = {"Through a recent series of breakthroughs, deep learning has boosted the entire field of machine learning. Now, even programmers who know close to nothing about this technology can use simple, efficient tools to implement programs capable of learning from data. This best-selling book uses concrete examples, minimal theory, and production-ready Python frameworks--scikit-learn, Keras, and TensorFlow--to help you gain an intuitive understanding of the concepts and tools for building intelligent systems. With this updated third edition, author Aurelien Geron explores a range of techniques, starting with simple linear regression and progressing to deep neural networks. Numerous code examples and exercises throughout the book help you apply what you've learned. Programming experience is all you need to get started"--},
+  isbn = {978-1-0981-2597-4},
+  lccn = {QA76.73.P98 G45 2023},
+  keywords = {Apprentissage automatique,artificial intelligence,Artificial intelligence,Intelligence artificielle,Machine learning,Python (Computer program language),Python (Langage de programmation),TensorFlow},
+  annotation = {OCLC: on1346503549}
+}
+
+@book{grusDataScienceScratch2019,
+  title = {Data {{Science}} from {{Scratch}}: {{First Principles}} with {{Python}}},
+  shorttitle = {Data {{Science}} from {{Scratch}}},
+  author = {Grus, Joel},
+  year = {2019},
+  edition = {2nd ed},
+  publisher = {O'Reilly Media, Incorporated},
+  address = {Sebastopol},
+  abstract = {Cover -- Copyright -- Table of Contents -- Preface to the Second Edition -- Conventions Used in This Book -- Using Code Examples -- O'Reilly Online Learning -- How to Contact Us -- Acknowledgments -- Preface to the First Edition -- Data Science -- From Scratch -- Chapter 1. Introduction -- The Ascendance of Data -- What Is Data Science? -- Motivating Hypothetical: DataSciencester -- Finding Key Connectors -- Data Scientists You May Know -- Salaries and Experience -- Paid Accounts -- Topics of Interest -- Onward -- Chapter 2. A Crash Course in Python -- The Zen of Python -- Getting Python -- Virtual Environments -- Whitespace Formatting -- Modules -- Functions -- Strings -- Exceptions -- Lists -- Tuples -- Dictionaries -- defaultdict -- Counters -- Sets -- Control Flow -- Truthiness -- Sorting -- List Comprehensions -- Automated Testing and assert -- Object-Oriented Programming -- Iterables and Generators -- Randomness -- Regular Expressions -- Functional Programming -- zip and Argument Unpacking -- args and kwargs -- Type Annotations -- How to Write Type Annotations -- Welcome to DataSciencester! -- For Further Exploration -- Chapter 3. Visualizing Data -- matplotlib -- Bar Charts -- Line Charts -- Scatterplots -- For Further Exploration -- Chapter 4. Linear Algebra -- Vectors -- Matrices -- For Further Exploration -- Chapter 5. Statistics -- Describing a Single Set of Data -- Central Tendencies -- Dispersion -- Correlation -- Simpson's Paradox -- Some Other Correlational Caveats -- Correlation and Causation -- For Further Exploration -- Chapter 6. Probability -- Dependence and Independence -- Conditional Probability -- Bayes's Theorem -- Random Variables -- Continuous Distributions -- The Normal Distribution -- The Central Limit Theorem -- For Further Exploration -- Chapter 7. Hypothesis and Inference -- Statistical Hypothesis Testing},
+  isbn = {978-1-4920-4113-9 978-1-4920-4110-8},
+  langid = {english}
+}
+
+@misc{HastiesudomainsISLPISLP_websitepdfdownloadhtml,
+  title = {Hastie.Su.Domains/{{ISLP}}/{{ISLP}}\_website.Pdf.Download.Html},
+  urldate = {2025-04-29},
+  howpublished = {https://hastie.su.domains/ISLP/ISLP\_website.pdf.download.html},
+  file = {C:\Users\Daniel\Zotero\storage\WHLZEIR8\ISLP_website.pdf.download.html}
+}
+
 @misc{HopkinsFunctionRDocumentation,
   title = {Hopkins Function - {{RDocumentation}}},
   urldate = {2025-04-02},
@@ -117,6 +209,14 @@
   file = {C:\Users\Daniel\Zotero\storage\NGHWFDQT\how-to-create-correlation-heatmap-in-r.html}
 }
 
+@misc{HowExplainGradient,
+  title = {How to Explain Gradient Boosting},
+  urldate = {2025-04-29},
+  abstract = {3-part article on how gradient boosting works for squared error, absolute error, and general loss functions. Deeply explained, but as simply and intuitively as possible.},
+  howpublished = {http://explained.ai/gradient-boosting/index.html},
+  file = {C:\Users\Daniel\Zotero\storage\H2CVJB9A\index.html}
+}
+
 @misc{IfElseConditions,
   title = {R {{If}}...{{Else Conditions}}},
   urldate = {2025-04-26},
@@ -130,6 +230,22 @@
   title = {Initialisation},
   urldate = {2025-04-26},
   abstract = {mclust is a contributed R package for model-based clustering, classification, and density estimation based on finite normal mixture modelling. It provides functions for parameter estimation via the EM algorithm for normal mixture models with a variety of covariance structures, and functions for simulation from these models. Also included are functions that combine model-based hierarchical clustering, EM for mixture estimation and the Bayesian Information Criterion (BIC) in comprehensive strategies for clustering, density estimation and discriminant analysis. Additional functionalities are available for displaying and visualizing fitted models along with clustering, classification, and density estimation results.}
+}
+
+@book{Introduction,
+  title = {Introduction}
+}
+
+@book{jamesIntroductionStatisticalLearning2023,
+  title = {An Introduction to Statistical Learning: With Applications in {{Python}}},
+  shorttitle = {An Introduction to Statistical Learning},
+  author = {James, Gareth and Witten, Daniela and Hastie, Trevor and Tibshirani, Robert and Taylor, Jonathan E.},
+  year = {2023},
+  series = {Springer Texts in Statistics},
+  publisher = {Springer},
+  address = {Cham},
+  isbn = {978-3-031-38746-3 978-3-031-38747-0},
+  langid = {english}
 }
 
 @misc{kosourovaHowCreateDataframe2025,
@@ -228,6 +344,16 @@
   file = {C:\Users\Daniel\Zotero\storage\8RBGHZSY\pdf-basics.html}
 }
 
+@misc{PDFPowerOutliers,
+  title = {({{PDF}}) {{The Power}} of {{Outliers}} (and {{Why Researchers Should Always Check}} for {{Them}})},
+  journal = {ResearchGate},
+  urldate = {2025-04-29},
+  abstract = {PDF {\textbar} There has been much debate in the literature regarding what to do with extreme or influential data points. The goal of this paper is to summarize... {\textbar} Find, read and cite all the research you need on ResearchGate},
+  howpublished = {https://www.researchgate.net/publication/242073851\_The\_Power\_of\_Outliers\_and\_Why\_Researchers\_Should\_Always\_Check\_for\_Them},
+  langid = {english},
+  file = {C:\Users\Daniel\Zotero\storage\6K3JT3DE\242073851_The_Power_of_Outliers_and_Why_Researchers_Should_Always_Check_for_Them.html}
+}
+
 @misc{RstatixDocumentation,
   title = {Rstatix Documentation},
   urldate = {2025-04-21},
@@ -319,4 +445,8 @@
   abstract = {Hopkins statistic (Hopkins and Skellam 1954) can be used to test for spatial randomness of data and for detecting clusters in data. Although the method is nearly 70 years old, there is persistent confusion regarding the definition and calculation of the statistic. We investigate the confusion and its possible origin. Using the most general definition of Hopkins statistic, we perform a small simulation to verify its distributional properties, provide a visualization of how the statistic is calculated, and provide a fast R function to correctly calculate the statistic. Finally, we propose a protocol of five questions to guide the use of Hopkins statistic.},
   langid = {english},
   file = {C:\Users\Daniel\Zotero\storage\BPNWLK52\Wright - 2022 - Will the Real Hopkins Statistic Please Stand Up.pdf}
+}
+
+@book{zotero-item-421,
+  type = {Book}
 }
