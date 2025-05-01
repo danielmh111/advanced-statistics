@@ -595,6 +595,7 @@ plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3),
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
 
+
 ```{r logistic-regression-feature-selection}
 #| cache: true
 
@@ -777,6 +778,7 @@ logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_sta
 
 logreg_featselection_2_byClass_stats_table
 ```
+
 
 ```{r weighted-logistic-regression}
 #| cache: true
@@ -979,7 +981,7 @@ best_reg_conf_table
 
 ```
 
-logistic regression was not great. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
+The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85% (. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
 
 ### Random Forest
 
@@ -1070,7 +1072,7 @@ rf_byClass_stats_table <- rf_byClass_stats %>%
     font_size = 9
   )
 
-rf_byClass_stats_table
+# rf_byClass_stats_table
 ```
 
 ```{r random-forest-base-feature-importance-table}
@@ -1446,7 +1448,7 @@ rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
     font_size = 9
   )
 
-rf_tuned_byClass_stats_table
+# rf_tuned_byClass_stats_table
 
 ```
 
@@ -1564,53 +1566,30 @@ for (i in 1:length(models)) {
 }
 
 
-svm_kernel_summary_table <- results_df %>%
-  kable(
-    caption = "SVM Performance with Different Kernels",
-    col.names = c("Kernel", "Accuracy", "Kappa", 
-                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
-    digits = 4,
-    longtable = FALSE,
-    format = "latex",
-    align = "lcccccc",
-    booktabs = TRUE
-  ) %>%
-  kable_styling(
-    latex_options = c("striped", "hold_position", "scale_down"),
-    font_size = 9
-  )
-svm_kernel_summary_table
+# svm_kernel_summary_table <- results_df %>%
+#   kable(
+#     caption = "SVM Performance with Different Kernels",
+#     col.names = c("Kernel", "Accuracy", "Kappa", 
+#                   "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+#     digits = 4,
+#     longtable = FALSE,
+#     format = "latex",
+#     align = "lcccccc",
+#     booktabs = TRUE
+#   ) %>%
+#   kable_styling(
+#     latex_options = c("striped", "hold_position", "scale_down"),
+#     font_size = 9
+#   )
+# svm_kernel_summary_table
 ```
 
 ```{r svm-tune-hyperparameters, fig.cap="**Hyperparameter Affect on SVM Performance**"}
 #| cache: true
 
-tune_grid <- expand.grid(
-  C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
-  sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
-)
-
-
-svm_tune <- train(
-  label ~ .,
-  data = train_data,
-  method = "svmRadial",
-  preProcess = NULL, 
-  tuneGrid = tune_grid,
-  trControl = trainControl(method = "cv", number = 5) # cv is crossvalidation, 5 is the number of folds 
-)
-  
-
-plot(svm_tune)
-
-```
-
-```{r svm-final-summary-tables}
-#| cache: true
-
 # tune_grid <- expand.grid(
-#   C = c(0.164, 0.166, 0.168, 0.17, 0.172, 0.174, 0.176, 0.178, 0.18, 0.182, 0.185, 0.187, 0.19, 0.192, 0.195, 0.1975, 0.2, 0.202), # values of the cost parameter, lower values have softer margin
-#   sigma = c(0.038, 0.039, 0.04, 0.041, 0.044, 0.0445, 0.045, 0.0455, 0.046, 0.0465, 0.047, 0.048, 0.049, 0.05, 0.051, 0.052, 0.053, 0.054, 0.055) # values of the gamma parameter
+#   C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
+#   sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
 # )
 # 
 # 
@@ -1618,108 +1597,131 @@ plot(svm_tune)
 #   label ~ .,
 #   data = train_data,
 #   method = "svmRadial",
-#   preProcess = NULL,
+#   preProcess = NULL, 
 #   tuneGrid = tune_grid,
-#   trControl = trainControl(method = "repeatedcv", number = 10, repeats = 5) # cv is crossvalidation, 5 is the number of folds
-#   # with three repeats, the tuning is run 3 times and the average results are returned
+#   trControl = trainControl(method = "cv", number = 5) # cv is crossvalidation, 5 is the number of folds 
 # )
+#   
 # 
-# 
-# 
-# # Extract optimal parameters
-# optimal_params <- svm_tune$bestTune
+# plot(svm_tune)
+
+```
+
+```{r svm-final-summary-tables}
+#| cache: true
+
+tune_grid <- expand.grid(
+  C = c(0.164, 0.166, 0.168, 0.17, 0.172, 0.174, 0.176, 0.178, 0.18, 0.182, 0.185, 0.187, 0.19, 0.192, 0.195, 0.1975, 0.2, 0.202), # values of the cost parameter, lower values have softer margin
+  sigma = c(0.038, 0.039, 0.04, 0.041, 0.044, 0.0445, 0.045, 0.0455, 0.046, 0.0465, 0.047, 0.048, 0.049, 0.05, 0.051, 0.052, 0.053, 0.054, 0.055) # values of the gamma parameter
+)
+
+
+svm_tune <- train(
+  label ~ .,
+  data = train_data,
+  method = "svmRadial",
+  preProcess = NULL,
+  tuneGrid = tune_grid,
+  trControl = trainControl(method = "repeatedcv", number = 10, repeats = 5) # cv is crossvalidation, 5 is the number of folds
+  # with three repeats, the tuning is run 3 times and the average results are returned
+)
+
+
+
+# Extract optimal parameters
+optimal_params <- svm_tune$bestTune
 # optimal_params
-# 
-# 
-# 
-# svm_final_model <- svm(
-#   label ~ .,
-#   data = train_data,
-#   kernel = "radial",
-#   gamma = optimal_params$sigma,
-#   cost = optimal_params$C,
-#   scale = FALSE
-# )
-# 
-# svm_final_predictions <- predict(svm_final_model, test_data)
-# svm_final_conf_matrix <- confusionMatrix(svm_final_predictions, test_data$label)
-# 
-# 
-# svm_final_conf_df <- as.data.frame(best_conf_matrix$table)
-# svm_final_conf_df <- svm_final_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
-# 
-# svm_final_confm_table <- svm_final_conf_df %>%
-#   kable(
-#     caption = "SVM Tuned Model Confusion Matrix",
-#     digits = 7,
-#     longtable = FALSE,
-#     align = "c",
-#     booktabs = TRUE,
-#     format = "latex",
-#     na="-"
-#   ) %>%
-#   kable_styling(
-#     latex_options = c("striped", "hold_position", "scale_down"),
-#     font_size = 9
-#   ) %>%
-#   add_header_above(
-#     c(" " = 1, "Reference" = 4)
-#   ) #%>%
-#   # pack_rows(
-#   #   "Prediction",
-#   #   1,
-#   #   4
-#   # )
-# 
-# svm_final_confm_table
-# 
-# 
-# svm_final_overall_stats <- data.frame(
-#   Statistic = names(rf_conf_matrix$overall),
-#   Value = rf_conf_matrix$overall
-# )
-# 
-# 
-# svm_final_overall_stats_table <- svm_final_overall_stats %>%
-#   kable(
-#     caption = "SVM Tuned Model Overall Statistics",
-#     col.names = c("Statistic", "Value"),
-#     digits = 4,
-#     longtable = FALSE,
-#     align = "lc",
-#     format = "latex",
-#     booktabs = TRUE
-#   ) %>%
-#   kable_styling(
-#     latex_options = c("striped", "hold_position"),
-#     font_size = 9
-#   )
-# 
-# svm_final_overall_stats_table
-# 
-# 
-# 
-# svm_final_byClass_stats <- as.data.frame(svm_final_conf_matrix$byClass)
-# svm_final_byClass_stats <- t(svm_final_byClass_stats) # I want the class names to be columns not rows
-# svm_final_byClass_stats <- as.data.frame(svm_final_byClass_stats)
-# 
-# 
-# svm_final_byClass_stats_table <- svm_final_byClass_stats %>%
-#   rownames_to_column("Statistic") %>% # turn the statistics into a column
-#   kable(
-#     caption = "SVM Tuned Model Statistics by Class",
-#     longtable = FALSE,
-#     digits = 4,
-#     align = "lccccc",
-#     format = "latex",
-#     booktabs = TRUE
-#   ) %>%
-#   kable_styling(
-#     latex_options = c("striped", "hold_position", "scale_down"),
-#     font_size = 9
-#   )
-# 
-# svm_final_byClass_stats_table
+
+
+
+svm_final_model <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "radial",
+  gamma = optimal_params$sigma,
+  cost = optimal_params$C,
+  scale = FALSE
+)
+
+svm_final_predictions <- predict(svm_final_model, test_data)
+svm_final_conf_matrix <- confusionMatrix(svm_final_predictions, test_data$label)
+
+
+svm_final_conf_df <- as.data.frame(best_conf_matrix$table)
+svm_final_conf_df <- svm_final_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+svm_final_confm_table <- svm_final_conf_df %>%
+  kable(
+    caption = "SVM Tuned Model Confusion Matrix",
+    digits = 7,
+    longtable = FALSE,
+    align = "c",
+    booktabs = TRUE,
+    format = "latex",
+    na="-"
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>%
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+svm_final_confm_table
+
+
+svm_final_overall_stats <- data.frame(
+  Statistic = names(rf_conf_matrix$overall),
+  Value = rf_conf_matrix$overall
+)
+
+
+svm_final_overall_stats_table <- svm_final_overall_stats %>%
+  kable(
+    caption = "SVM Tuned Model Overall Statistics",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    longtable = FALSE,
+    align = "lc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+svm_final_overall_stats_table
+
+
+
+svm_final_byClass_stats <- as.data.frame(svm_final_conf_matrix$byClass)
+svm_final_byClass_stats <- t(svm_final_byClass_stats) # I want the class names to be columns not rows
+svm_final_byClass_stats <- as.data.frame(svm_final_byClass_stats)
+
+
+svm_final_byClass_stats_table <- svm_final_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "SVM Tuned Model Statistics by Class",
+    longtable = FALSE,
+    digits = 4,
+    align = "lccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+svm_final_byClass_stats_table
 
 
 ```
@@ -2288,7 +2290,9 @@ uncertainty_table
 
 ## Bootstrapping
 
-All of the above modelling techniques were repeated on bootstrapped data with a resampling size of 10,000 data points. The results achieved were worse across the board, but some models were affected more than others.
+Bootstrapping was used to oversample the original dataset and increase the number of observations to 10,000. With a test-train split of 70%-30%, the model were trained on 7000 observations for supervised methods. All three models recieve a modest bump in overall accuracy and in the Class D F1 score (*table 41*). This shows that the performance of any model can be improved without any further tuning by collecting a larger dataset from the population. However, the increases are small and it is very likely that the cost of collecting more data is prohibative given the performance gains that this analysis suggests can be expected. Given this finding, it is recommended that further research focuses on improved modelling techniques, or the collection data with new descriptive features. 
+
+In unsupervised learning, the bootstrapping method leads to poor performance from the model based model, which now suggests an optimal number of clusters of 8. The duplication caused by boostrapping violates the assumptions that underpin the gaussian mixture model approach because it is assumed that the data is all drawn from the population produced by normal distribuitions. This means that bootstrapping is not appropriate for testing the performance of this model on a larger dataset.
 
 ```{r bootstrapping-supervised-results}
 #| cache: true
@@ -2316,14 +2320,14 @@ lr_bootstrap_model <- multinom(
     trace = FALSE
     )
 
-# svm_bootstrap_model <- svm(
-#   label ~ .,
-#   data = bootstrap_train_data,
-#   kernel = "radial",
-#   cost = optimal_params$C,
-#   gamma = optimal_params$sigma,
-#   scale = FALSE
-# )
+svm_bootstrap_model <- svm(
+  label ~ .,
+  data = bootstrap_train_data,
+  kernel = "radial",
+  cost = optimal_params$C,
+  gamma = optimal_params$sigma,
+  scale = FALSE
+)
  
 rf_bootstrap_model <- randomForest(
   label ~ .,
@@ -2334,46 +2338,47 @@ rf_bootstrap_model <- randomForest(
 )
 
 lr_bootstrap_predictions <- predict(lr_bootstrap_model, bootstrap_test_data)
-# svm_bootstrap_predictions <- predict(svm_bootstrap_model, bootstrap_test_data)
+svm_bootstrap_predictions <- predict(svm_bootstrap_model, bootstrap_test_data)
 rf_bootstrap_predictions <- predict(rf_bootstrap_model, bootstrap_test_data)
 
 lr_bootstrap_conf_matrix <- confusionMatrix(lr_bootstrap_predictions, bootstrap_test_data$label)
-# svm_bootstrap_conf_matrix <- confusionMatrix(bootstrap_predictions, bootstrap_test_data$label)
+svm_bootstrap_conf_matrix <- confusionMatrix(svm_bootstrap_predictions, bootstrap_test_data$label)
 rf_bootstrap_conf_matrix <- confusionMatrix(rf_bootstrap_predictions, bootstrap_test_data$label)
 
 # get the overall accuracy of each bstrp model from the conf matrix
 lr_bootstrap_acc <- unname((lr_bootstrap_conf_matrix$overall)["Accuracy"])
-# svm_bootstrap_acc <- unname((svm_bootstrap_conf_matrix$overall)["Accuracy"])
+svm_bootstrap_acc <- unname((svm_bootstrap_conf_matrix$overall)["Accuracy"])
 rf_bootstrap_acc <- unname((rf_bootstrap_conf_matrix$overall)["Accuracy"])
 
 
 # get the overall statistics for the original dataset models.
 
 lr_orig_acc <- unname((simple_logreg_conf_matrix$overall)["Accuracy"])
-# svm_orig_acc <- unname((svm_final_conf_matrix$overall)["Accuracy"])
-rf_orig_acc <- unname((rf_tuned_conf_df$overall)["Accuracy"])
+svm_orig_acc <- unname((svm_final_conf_matrix$overall)["Accuracy"])
+rf_orig_acc <- unname((rf_tuned_conf_matrix$overall)["Accuracy"])
 
-
+# lr_orig_acc
+# rf_orig_acc
 
 # get the by class stats for each model - we will get the class d f1 score from these
 
 lr_bootstrap_d_f1 <- lr_bootstrap_conf_matrix$byClass[,"F1"]["Class: D"]
-# svm_bootstrap_d_f1 <- svm_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
+svm_bootstrap_d_f1 <- svm_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
 rf_bootstrap_d_f1 <- rf_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
 
 
 lr_orig_d_f1 <- simple_logreg_conf_matrix$byClass[,"F1"]["Class: D"]
-# svm_orig_d_f1 <- svm_final_conf_matrix$byClass[, "F1"]["Class: D"]
-rf_orig_d_f1 <- rf_tuned_conf_df$byClass[, "F1"]["Class: D"]
+svm_orig_d_f1 <- svm_final_conf_matrix$byClass[, "F1"]["Class: D"]
+rf_orig_d_f1 <- rf_tuned_conf_matrix$byClass[, "F1"]["Class: D"]
 
 
 
 
-Model <- c("Logistic Regression", "Random Forest") # "Support Vector Machines", "Random Forest")
-original_accuracy <- c(lr_orig_acc, rf_orig_acc) #, svm_orig_acc, rf_orig_acc)
-original_d_f1 <- c(lr_orig_d_f1, rf_orig_d_f1) #, svm_orig_d_f1, rf_orig_d_f1)
-bootstrap_accuracy <- c(lr_bootstrap_acc, rf_bootstrap_acc) #, svm_bootstrap_acc, rf_bootstrap_acc)
-bootstrap_d_f1 <- c(lr_bootstrap_d_f1, rf_bootstrap_d_f1) #, svm_bootstrap_d_f1, rf_bootstrap_d_f1)
+Model <- c("Logistic Regression", "Support Vector Machines", "Random Forest")
+original_accuracy <- c(lr_orig_acc, svm_orig_acc, rf_orig_acc)
+original_d_f1 <- c(lr_orig_d_f1, svm_orig_d_f1, rf_orig_d_f1)
+bootstrap_accuracy <- c(lr_bootstrap_acc, svm_bootstrap_acc, rf_bootstrap_acc)
+bootstrap_d_f1 <- c(lr_bootstrap_d_f1, svm_bootstrap_d_f1, rf_bootstrap_d_f1)
 
 comp_df = data.frame(
   Model,
@@ -2391,7 +2396,7 @@ comparison_table <- comp_df %>% kable(
     caption = "Comparison of Model Performance on Bootstrapped Data",
     digits = 4,
     align = "lcccc",
-    col.names = c("Model", "Accuracy - Original Data", "Class D F1 Score - Original Data", "Accuracy - Bootstrapped Data", "Class D F1 Score - Bootstrapped Data"),
+    col.names = c("Model", "Accuracy", "Class D F1 Score", "Accuracy", "Class D F1 Score"),
     format = "latex",
     longtable = FALSE,
     booktabs = TRUE
@@ -2399,7 +2404,8 @@ comparison_table <- comp_df %>% kable(
   kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
     font_size = 9
-  )
+  ) %>%
+  add_header_above(c(" "=1, "Original Data"=2, "Bootstrapped Data" = 2))
 
 comparison_table
 
