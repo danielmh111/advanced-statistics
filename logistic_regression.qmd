@@ -200,6 +200,7 @@ lets use this output to calculate precision recall and f1 score:
 overall_metrics <- conf_matrix$overall
 overall_metrics
 ```
+
 ```{r}
 class_metrics <- conf_matrix$byClass
 class_metrics <- as.data.frame(class_metrics) %>% transpose()

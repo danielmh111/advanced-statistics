@@ -192,7 +192,7 @@ Now, let's tune the hyperparameters for the radial kernel to optimize the model:
 
 tune_grid <- expand.grid(
   C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
-  sigma = c(0.01, 0.05, 0.1, 0.5, 1, 5) # values of the gamma parameter
+  sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
 )
 
 

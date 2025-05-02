@@ -19,12 +19,9 @@ knitr::opts_chunk$set(
 
 # Random Forest
 
-I have chosen to use random forest because I think its going to be the most robust option for handling the data without extra processing. We have already identified a few things in eda and logistic regression modelling that we have to keep in mind:
-  - we have correlated features
-  - we have features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable
-  - we have some columns that aren't perfectly normally distributed, such as the bimodal peak in X7
-  
-Random Forest is a robust algorithm with few underlying assumptions that I think will handle these considerations well. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may peform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modelling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for deserning between class A and D, and then refine the selection in further nodes. 
+I have chosen to use random forest because I think its going to be the most robust option for handling the data without extra processing. We have already identified a few things in eda and logistic regression modelling that we have to keep in mind: - we have correlated features - we have features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable - we have some columns that aren't perfectly normally distributed, such as the bimodal peak in X7
+
+Random Forest is a robust algorithm with few underlying assumptions that I think will handle these considerations well. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may peform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modelling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for deserning between class A and D, and then refine the selection in further nodes.
 
 So now we can implement random forest, and then evaluate it as well as compare it with the logistic regression results.
 
@@ -73,6 +70,7 @@ rf_model <- randomForest(
 
 print(rf_model)
 ```
+
 looks like we have the same problem with class D as before, but now the misclassifications are spread more across all the other labels. Hopefully we can improve this with some tuning.
 
 ```{r}
@@ -111,10 +109,9 @@ for (class in 1:nrow(class_metrics)) {
 
 all of these metrics are very promising - random forest is performing much better out of the box than logistic regression. This is to be expected because of considerations mentioned at the top of the document.
 
-For class D, we can see that this is still the hardest label for the model to handle, but with rf the precision is pretty good, meaning there is an exceptable (depending on some context we dont have) rate of false positives. False negative are still pretty common however, which we can see from the low recall of the model for this class. 
+For class D, we can see that this is still the hardest label for the model to handle, but with rf the precision is pretty good, meaning there is an exceptable (depending on some context we dont have) rate of false positives. False negative are still pretty common however, which we can see from the low recall of the model for this class.
 
-We will try some tuning techniques to try and increase the recall and f1 score in class D, hopefully without impacting the overall accuracy of the model. 
-
+We will try some tuning techniques to try and increase the recall and f1 score in class D, hopefully without impacting the overall accuracy of the model.
 
 first, lets look at the feature importance:
 
@@ -130,6 +127,7 @@ varImpPlot(rf_model,
            main = "Variable Importance",
            n.var = 20)
 ```
+
 ```{r}
 top_features <- rownames(importance_values)[order(importance_values[, "MeanDecreaseGini"], 
                                                   decreasing = TRUE)][1:5]
@@ -139,7 +137,6 @@ bottom_featues <- rownames(importance_values)[order(importance_values[, "MeanDec
                                                   decreasing = FALSE)][1:5]
 cat("Top 5 least important features:", paste(bottom_featues, collapse=", "), "\n")
 ```
-
 
 the most and least important features are no suprise. lets try removing some of the least important features and see how that effects performance. Then, we can also try removing X8. Although this is one of the most important features, we can see that its importance to classes A B and C are and order of magnitude larger than its importance to D, which is where we want to increase the precision of our model. By removing it, we may be able to boost the importance of a more decerning feature such as X10 and X11
 
@@ -181,6 +178,7 @@ conf_matrix <- confusionMatrix(rf_predictions, selected_test_data_1$label)
 conf_matrix
 
 ```
+
 ```{r}
 
 class_metrics <- conf_matrix$byClass
@@ -193,11 +191,13 @@ for (class in 1:nrow(class_metrics)) {
   cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
 }
 ```
+
 ```{r}
 
 importance_values <- importance(rf_model)
 print(importance_values)
 ```
+
 ```{r}
 top_features <- rownames(importance_values)[order(importance_values[, "MeanDecreaseGini"], 
                                                   decreasing = TRUE)][1:5]
@@ -209,7 +209,6 @@ cat("Top 5 least important features:", paste(bottom_featues, collapse=", "), "\n
 ```
 
 The results here look extremely similar to the original model. As we remarked during the logistic regression modelling, being able to model with the same accuracy, precision and recall but with fewer features is a good thing because it will reduce the cost of collection data for the model if it is to be used in further research, and may make it more generalizable to research in new datasets.
-
 
 ### removing an important feature
 
@@ -233,7 +232,6 @@ rf_model <- randomForest(
 print(rf_model)
 ```
 
-
 ```{r}
 
 rf_predictions <- predict(rf_model, selected_test_data_2)
@@ -243,7 +241,6 @@ conf_matrix <- confusionMatrix(rf_predictions, selected_test_data_2$label)
 conf_matrix
 
 ```
-
 
 ```{r}
 
@@ -263,6 +260,7 @@ for (class in 1:nrow(class_metrics)) {
 importance_values <- importance(rf_model)
 print(importance_values)
 ```
+
 ```{r}
 top_features <- rownames(importance_values)[order(importance_values[, "MeanDecreaseGini"], 
                                                   decreasing = TRUE)][1:5]
@@ -280,10 +278,9 @@ varImpPlot(rf_model,
            n.var = 20)
 ```
 
-
 This didn't work exactly how I expected - instead of X11 and X10 increasing in importance, it looks like X3 jumped up ahead of them. The results look really similar to the original models results
 
-Lets try a more systematic approach to tuning the model instead - we are going to try and optimize the mtry parameter, which controls how many features are used for decision making 
+Lets try a more systematic approach to tuning the model instead - we are going to try and optimize the mtry parameter, which controls how many features are used for decision making
 
 ### tuning mtry
 
@@ -309,7 +306,6 @@ cat("Optimal mtry:", optimal_mtry, "\n")
 ```
 
 the plot shows that theres a lower error rate with mtry = 6 than mtry = 4, so we should try retraining our model with this value.
-
 
 ```{r}
 
@@ -355,9 +351,9 @@ for (class in 1:nrow(class_metrics)) {
 }
 ```
 
-We have achieved exactly one fewer false negative in class D! 
+We have achieved exactly one fewer false negative in class D!
 
-This doesn't look particularly promising. At this stage, it would be good to have a bigger data set so we could see small improvements in the model reflected in its predictions. This means that this is a good point to apply the model to the bootstrapped data. 
+This doesn't look particularly promising. At this stage, it would be good to have a bigger data set so we could see small improvements in the model reflected in its predictions. This means that this is a good point to apply the model to the bootstrapped data.
 
 ## using bootstrap data
 
@@ -427,7 +423,8 @@ for (class in 1:nrow(class_metrics)) {
   cat("F1 Score:", round(class_metrics[class, "F1"], 4), "\n")
 }
 ```
-training over the much larger dataset has immediately increased the performance of our model significantly. Unfortunetly, this is likely not due to better performance by the model, its actually probably a combination of overfitting and data leakage. 
+
+training over the much larger dataset has immediately increased the performance of our model significantly. Unfortunetly, this is likely not due to better performance by the model, its actually probably a combination of overfitting and data leakage.
 
 By training on boostrapped data, we effectively training on the same data points over and over. This can make the model really specific the the data in the original data set, and we run the risk of this model being overfitted to the data in this file and it won't necessarily generalize well to new data thats collected in future. This is worth keeping in mind if that is the intention of developing this model. However, since we are told that the data is biological in nature, its possible that it is collected from an ongoing health trial. In a scenario where the aim is to monitor the long term health outcomes of 3000 specific people, then a model that is highly specific to these people is not such a bad thing - there is no desire to ever generalize from these people to the wider population. I think this is probably an unlikely use case
 
@@ -497,8 +494,8 @@ for (class in 1:nrow(class_metrics)) {
 }
 ```
 
-Now we are seeing that the final metrics with bootstrap data are similar as with our underlying data, which is what we expect since both contain the same information. 
+Now we are seeing that the final metrics with bootstrap data are similar as with our underlying data, which is what we expect since both contain the same information.
 
-But we can also see that the estimate of Out-Of-Bag error is now really low (0.1%) - our model is very confident at predicting based on the training data. This means there might not be a lot of scope for tuning the model further. This extremely low out of bag error is so drastic that it is probably a good indicator that this model is very overfitted. This must be an inherent risk when using bootstrapped data as you are always going to create duplicates. 
+But we can also see that the estimate of Out-Of-Bag error is now really low (0.1%) - our model is very confident at predicting based on the training data. This means there might not be a lot of scope for tuning the model further. This extremely low out of bag error is so drastic that it is probably a good indicator that this model is very overfitted. This must be an inherent risk when using bootstrapped data as you are always going to create duplicates.
 
-So, while my original model and model trained on boostrapped data both return the same evaluation metrics like f1 score, accuracy, precision, and recall, I would not recommend using the one trained on bootstrap data since it is likely far more overfitted an riskes performing poorly on new data. 
+So, while my original model and model trained on boostrapped data both return the same evaluation metrics like f1 score, accuracy, precision, and recall, I would not recommend using the one trained on bootstrap data since it is likely far more overfitted an riskes performing poorly on new data.

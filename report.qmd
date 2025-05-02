@@ -132,12 +132,13 @@ desc <- desc %>%
 
 desc_table <- desc %>% 
   kable(
-    caption = "Feature Descriptions", 
+    caption = "Feature Descriptions \\label{tab:feat-desc}", 
     digits = 3, 
     align = "c",
     booktabs = TRUE,
     na="-",
-    longtable = T
+    longtable = T,
+    label = 
   ) %>% 
   kable_styling(
     latex_options = c("striped", "hold_position", "scale_down"),
@@ -148,13 +149,14 @@ desc_table <- desc %>%
 desc_table
 ```
 
-This description of the predictive features shows the range of scales, ranging by and order of magnitude. Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
+This description of the predictive features shows the range of scales, ranging by and order of magnitude (\autoref{tab:feat-desc}). Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
 \twocolumn
 
 ## Exploratory Data Analysis Approach
 
 
-```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with catagorical labels*"}
+```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with catagorical labels*", out.width="100%", fig.margin=TRUE}
+#| label: fig-corrmap
 #| cache: true
 
 one_hot_data <- model.matrix(~ label - 1, data = data)
@@ -192,7 +194,7 @@ ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
   coord_fixed()
 ```
 
-Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20. Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicolinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms.
+Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20 (\autoref{fig-corrmap}). Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicolinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms.
 
 The difference between these two group is that while X7, X8, and X9 are three features with some of the strongest correlations with the label values, all of X17 to X20 are features without significant correlations. This would lead us to believe that X17 - X20 have low predictive power in classification that aim to predict the class label and so removing them entirely would be a justifyable approach.
 
@@ -200,7 +202,8 @@ Among the other columns, we see that there are definitly some columns with stron
 
 To produce the correlation matrix, the four catagorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
 
-```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*"}
+```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*", out.width="100%"}
+#| label: fig-hists
 #| cache: true
 
 data_long <- drop_na(data) %>%
@@ -241,9 +244,10 @@ ggplot(data_long, aes(x = value, fill = dist_group)) +
 
 ```
 
-The majority of the 20 predictive variables followed normal distributions. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance. With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modelling.
+The majority of the 20 predictive variables followed normal distributions. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance (\autoref{fig-hists}). With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modelling.
 
-```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*"}
+```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*", out.width="100%"}
+#| label: fig-boxplots
 #| cache: true
 
 data_clean <- data %>% drop_na()
@@ -302,9 +306,10 @@ boxplot
 
 Across the entire dataset, the distribution of labels is uniform, with roughly on quarter of the observations falling into each category.
 
-When the distribution of each feature is observed by class label, we see that some features have significantly different characteristics for each class. In the figure, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives us more insight into which features will be important for building effective models.
+When the distribution of each feature is observed by class label some features have significantly different characteristics for each class. In \autoref{fig-boxplots}, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives insight into which features will be important for building effective models - it is expected that features such as X7 with very different stats per class will be useful at creating decision boundaries or defining distributions for model-based clustering.
 
-```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of catagorical classes*"}
+```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of catagorical classes*", out.width="100%"}
+#| label: fig-pca
 #| cache: true
 
 data_clean <- data %>% drop_na() # pca wont work with null values in the frame
@@ -327,13 +332,13 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
     
 ```
 
-It is important to learn about the structure of the underlying data in order to understand the chances of sucess with unsupervised methods. Using Principle Componant Analysis captures most of the information in the system in one scatter plot. This shows us that there is definitly some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
+It is important to learn about the structure of the underlying data in order to understand the chances of sucess with modelling methods. Using Principle Componant Analysis captures most of the information in the system in one scatter plot (\autoref{fig-pca}). This shows that there is some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
 
-The seperation of the first three classes suggests that there is information in the features that allow the statistical models to decern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
+The seperation of the first three classes suggests there is information in the features that allow statistical models to decern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
 
 The fact that the three classes that are distinct are displaced along the second principle componant and not the first principle component means that it is the dimensions with less variation that distinguish them. It would be easier to seperate the groups with predictive models if they were offset along the first principle conmponent.
 
-To learn more about the underlying structure of the dataset, the clustering tendency can be examined by calculating the Hopkins statistic, where a score close to 1 indicates strong clustering tenency, a score of 0.5 indicates random distribution of occurences, and 0 a uniform distribution.
+To learn more about the underlying structure of the dataset, the clustering tendency can be examined by calculating the Hopkins statistic, where a score close to 1 indicates strong clustering tenency, a score of 0.5 indicates random distribution of occurences, and 0 a uniform distribution [@wrightWillRealHopkins2022].
 
 ```{r hopkins}
 #| cache: true
@@ -404,7 +409,7 @@ df <- data.frame(names, scores) %>%
 
 hopkins_table <- df %>%
   kable(
-    caption = "Hopkins Statistic Scores", 
+    caption = "Hopkins Statistic Scores \\label{tab:hopkins}", 
     digits = 7, 
     align = "lc", # left align the column names, but centre the scores
     booktabs = TRUE,
@@ -420,11 +425,11 @@ hopkins_table <- df %>%
 hopkins_table
 ```
 
-There is a very high clustering tendency for various treatments of the data[@wrightWillRealHopkins2022]. The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms that the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
+There is a very high clustering tendency for various treatments of the data (\autoref{tab:hopkins}). The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
 
 Similarly, the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots. This means that even the features with low correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models that do not correspond with the given labels.
 
-Overall, we see from exploritory data analysis that this data contains high amounts of information usable for predictive modelling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that may prevent models from performing well.
+Overall, we see from exploritory data analysis that this data contains high amounts of information usable for predictive modelling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that could hinder model performance.
 
 ```{r}
 data <- read_csv("data_clean.csv")
@@ -439,15 +444,18 @@ data_features <- data %>% select(-label)
 ### logistic regression - including class weighting, L2 regularization, and feature selection.
 A simple model, logistic regression is quick to implement and will reveal more about the data, in particular how different features contribute to predictions [@MultinomialLogisticRegression18:24:37+00:00].
 
-There are variations such as weighting and regularization[@jamesIntroductionStatisticalLearning2023, pp. 240-253] which will be implemented - the success of lack of success of these techniques will reveal characteristics about our data that will be valuable to inform the selection and implementation of other models [@WeightedLogisticRegression09:33:43+00:00]
+There are variations such as weighting and regularization [@jamesIntroductionStatisticalLearning2023, pp. 240-253] which will be implemented - the success of lack of success of these techniques will reveal characteristics about our data that will be valuable to inform the selection and implementation of other models [@WeightedLogisticRegression09:33:43+00:00]
 
 ### Random forest, including feature selection and tuning of mtry.
-Random Forest was chosen due to its resilience. One of the more robust option, it is a good choice for handling the data without extra processing. Several characteristics of the data have been identified that may cause othe models such as logistic regression and SVM to struggle: - Correlated of features -Features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable - Features that aren't perfectly normally distributed, such as the bimodal peak in X7
+Random Forest was chosen due to its resilience. One of the more robust option, it is a good choice for handling the data without extra processing. Several characteristics of the data have been identified that may cause othe models such as logistic regression and SVM to struggle: 
+  - Correlated of features 
+  - Features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable 
+  - Features that aren't perfectly normally distributed, such as the bimodal peak in X7
 
 Random Forest is a robust algorithm with few underlying assumptions that will handle these considerations well [@jamesIntroductionStatisticalLearning2023 pp. 346-347]. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may peform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modelling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for descerning between class A and D, and then refine the selection in further nodes.
 
 ### SVM, including feature selection, tuning of kernel selection, gamma, and cost parameters.
-SVM is a powerful and popular algorith. SVM has options for different kernals that can be tuned, and this is a promising approach to solving the challenges of seperating class A from class D that is evedent from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 3782. It might be the case that A and D aren't linearly seperable, but a non-linear kernal will have success.
+SVM is a powerful and popular algorith. SVM has options for different kernals that can be tuned, and this is a promising approach to solving the challenges of seperating class A from class D that is evedent from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 382]. It might be the case that A and D aren't linearly seperable, but a non-linear kernal will have success.
 
 ## Unsupervised Learning Methods
 
@@ -456,7 +464,7 @@ Agglomerative heirarchical clustering was chosen because it is interesting to ex
 
 Biological data is often naturally heirarchical, for example animals can be classified by deviding them into first kingdoms, then families of species, and finally species and sub-species [@caiESPRITForestParallelClustering2017].
 
-Although we don't know the exact meaning of each feature in our data, we know that it is biological in origin, perhaps gene expressions or environmental factors. This means that there might be a heirarchy of classes in our data.
+Although the exact meaning of each feature in the data isn't known, it is biological in origin (perhaps gene expressions or environmental factors). This means that there may be a heirarchy of classes in our data.
 
 Using this method without specifying that there are four values for label might reveal that some of the labels have a strong tendency to form sub classes, or that there is little structure in the data to justify asserting there are four classes. These would both be interesting finds.
 
@@ -465,9 +473,9 @@ It is also a model that handles the feature correlation well, which allows us to
 ### Gaussian mixture model clustering, including model seclection, regularization and dimensionality reduction using factor analysis.
 So far while working with this data set, it has been challenging to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data.
 
-Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. I think it might have a good chance of performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
+Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model (gmm) - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
 
-Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters[@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce fairly elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative heirarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not heirarchical in nature.
+Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters[@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not heirarchical in nature.
 
 # Results
 
@@ -502,7 +510,7 @@ simple_logreg_conf_df <- simple_logreg_conf_df %>% pivot_wider(names_from = Refe
 
 simp_logreg_confm_table <- simple_logreg_conf_df %>%
   kable(
-    caption = "Simple Logistic Regression Confusion Matrix", 
+    caption = "Simple Logistic Regression Confusion Matrix \\label{tab:slogrreg-cm}", 
     longtable = FALSE,
     digits = 7, 
     align = "c",
@@ -534,7 +542,7 @@ simp_logreg_overall_stats <- data.frame(
 
 simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
   kable(
-    caption = "Simple Logistic Regression Overall Statistics",
+    caption = "Simple Logistic Regression Overall Statistics \\label{tab:slogreg-stats}",
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
     format = "latex",
@@ -559,7 +567,7 @@ simp_logreg_byClass_stats <- as.data.frame(simp_logreg_byClass_stats)
 simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Simple Logistic Regression Statistics by Class",
+    caption = "Simple Logistic Regression Statistics by Class \\label{tab:slogreg-classStats}",
     digits = 4,
     align = "lccccc",
     format = "latex",
@@ -574,7 +582,9 @@ simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
 simp_logreg_byClass_stats_table
 ```
 
-```{r simple-logistic-regression-roc-curve, fig.cap="**Simple Logistic Regression ROC Plot:** *ROC plot for Class D vs Not Class D*"}
+
+```{r simple-logistic-regression-roc-curve, fig.cap="**Simple Logistic Regression ROC Plot:** *ROC plot for Class D vs Not Class D*", fig.margin=TRUE}
+#| label: fig-sLogRegROC
 #| cache: true
 
 simple_logreg_probabilities <- predict(simple_logreg_model, test_data, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
@@ -596,6 +606,7 @@ abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
 
 
+
 ```{r logistic-regression-feature-selection}
 #| cache: true
 
@@ -615,7 +626,7 @@ logreg_featselection_1_conf_df <- logreg_featselection_1_conf_df %>% pivot_wider
 
 logreg_featselection_1_confm_table <- logreg_featselection_1_conf_df %>%
   kable(
-    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Confusion Matrix", 
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Confusion Matrix \\label{tab:fs1-logreg-cm}", 
     digits = 7, 
     align = "c",
     booktabs = TRUE,
@@ -647,7 +658,7 @@ logreg_featselection_1_overall_stats <- data.frame(
 
 logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_stats %>%
   kable(
-    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Overall Statistics",
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Overall Statistics \\label{tab:fs1-logreg-os}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     align = "lc",
@@ -672,7 +683,7 @@ logreg_featselection_1_byClass_stats <- as.data.frame(logreg_featselection_1_byC
 logreg_featselection_1_byClass_stats_table <- logreg_featselection_1_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Statistics by Class",
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Statistics by Class \\label{tab:fs1-logreg-classStats}",
     longtable = FALSE,
     format = "latex",
     digits = 4,
@@ -707,7 +718,7 @@ logreg_featselection_2_conf_df <- logreg_featselection_2_conf_df %>% pivot_wider
 
 logreg_featselection_2_confm_table <- logreg_featselection_2_conf_df %>%
   kable(
-    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Confusion Matrix", 
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Confusion Matrix \\label{tab:fs2-logreg-cm}", 
     digits = 7, 
     longtable = FALSE,
     format = "latex",
@@ -739,7 +750,7 @@ logreg_featselection_2_overall_stats <- data.frame(
 
 logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_stats %>%
   kable(
-    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Overall Statistics",
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Overall Statistics \\label{tab:fs2-logreg-stats}",
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
     digits = 4,
@@ -764,7 +775,7 @@ logreg_featselection_2_byClass_stats <- as.data.frame(logreg_featselection_2_byC
 logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Statistics by Class",
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Statistics by Class \\label{tab:fs2-logreg-classStats}",
     digits = 4,
     longtable = FALSE,
     align = "lccccc",
@@ -778,8 +789,6 @@ logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_sta
 
 logreg_featselection_2_byClass_stats_table
 ```
-
-
 ```{r weighted-logistic-regression}
 #| cache: true
 
@@ -805,7 +814,7 @@ weighted_logreg_conf_df <- weighted_logreg_conf_df %>% pivot_wider(names_from = 
 
 weighted_logreg_confm_table <- weighted_logreg_conf_df %>%
   kable(
-    caption = "Weighted Logistic Regression Confusion Matrix", 
+    caption = "Weighted Logistic Regression Confusion Matrix \\label{tab:w-logreg-cm}", 
     digits = 7, 
     format = "latex",
     align = "c",
@@ -837,7 +846,7 @@ weighted_logreg_overall_stats <- data.frame(
 
 weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
   kable(
-    caption = "Weighted Logistic Regression Overall Statistics",
+    caption = "Weighted Logistic Regression Overall Statistics \\label{tab:w-logreg-stats}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     format = "latex",
@@ -862,7 +871,7 @@ weighted_logreg_byClass_stats <- as.data.frame(weighted_logreg_byClass_stats)
 weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Weighted Logistic Regression Statistics by Class",
+    caption = "Weighted Logistic Regression Statistics by Class \\label{tab:w-logreg-classStats}",
     digits = 4,
     longtable = FALSE,
     format = "latex",
@@ -877,7 +886,6 @@ weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
 weighted_logreg_byClass_stats_table
 
 ```
-
 ```{r regularized-logistic-regression-summary-table}
 #| cache: true
 
@@ -926,7 +934,7 @@ for (i in 1:length(decay_values)) {
 
 decay_summary_table <- results_df %>%
   kable(
-    caption = "Logistic Regression Performance with Different Regularization Parameters",
+    caption = "Logistic Regression Performance with Different Regularization Parameters \\label{tab:r-logreg-sum}",
     col.names = c("Decay", "Accuracy", "Kappa", 
                   "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
     digits = 4,
@@ -941,8 +949,8 @@ decay_summary_table <- results_df %>%
   )
 decay_summary_table
 ```
-
 ```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**"}
+#| label: fig-rlogreg
 #| cache: true
 
 ggplot(results_df %>% mutate(Decay = as.numeric(Decay)) %>% pivot_longer(cols = c(Accuracy, F1_Class_A, F1_Class_B, F1_Class_C, F1_Class_D),
@@ -955,7 +963,6 @@ ggplot(results_df %>% mutate(Decay = as.numeric(Decay)) %>% pivot_longer(cols = 
        y = "Performance Metric Value") +
   theme_minimal()
 ```
-
 ```{r regularized-logistic-regression-conf-matrix}
 #| cache: true
 
@@ -963,9 +970,9 @@ best_reg_conf_df <- as.data.frame(best_conf_matrix$table)
 best_reg_conf_df <- best_reg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
 best_reg_conf_table <- best_reg_conf_df %>%
   kable(
-    caption = paste("Confusion Matrix for Best Regularized Logistic Regression Model (Decay =", best_decay, ")"),
+    caption = paste("Confusion Matrix for Best Regularized Logistic Regression Model (Decay =", best_decay, ") \\label{tab:r-logreg-cm}"),
     digits = 0,
-    longtable = FALSE,
+    longtable = FALSE, 
     format = "latex",
     align = "c",
     booktabs = TRUE
@@ -1003,7 +1010,7 @@ rf_conf_df <- rf_conf_df %>% pivot_wider(names_from = Reference, values_from = F
 
 rf_confm_table <- rf_conf_df %>%
   kable(
-    caption = "Basic Random Forest Confusion Matrix", 
+    caption = "Basic Random Forest Confusion Matrix \\label{tab:brf-cm}", 
     digits = 7, 
     longtable = FALSE,
     align = "c",
@@ -1035,7 +1042,7 @@ rf_overall_stats <- data.frame(
 
 rf_overall_stats_table <- rf_overall_stats %>%
   kable(
-    caption = "Basic Random Forest Overall Statistics",
+    caption = "Basic Random Forest Overall Statistics \\label{tab:brf-stats}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     longtable = FALSE,
@@ -1060,7 +1067,7 @@ rf_byClass_stats <- as.data.frame(rf_byClass_stats)
 rf_byClass_stats_table <- rf_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Basic Random Forest Statistics by Class",
+    caption = "Basic Random Forest Statistics by Class \\label{tab:brf-classStats}",
     longtable = FALSE,
     format = "latex",
     digits = 4,
@@ -1072,9 +1079,8 @@ rf_byClass_stats_table <- rf_byClass_stats %>%
     font_size = 9
   )
 
-# rf_byClass_stats_table
+rf_byClass_stats_table
 ```
-
 ```{r random-forest-base-feature-importance-table}
 #| cache: true
 
@@ -1082,7 +1088,7 @@ importance_values <- as.data.frame(importance(rf_model) ) %>%
   arrange(desc(MeanDecreaseAccuracy))
 feature_importance_table <- importance_values %>%
   kable(
-    caption = "Basic Random Forest Feature Importance", 
+    caption = "Basic Random Forest Feature Importance \\label{tab:brf-feat-importance}", 
     digits = 3, 
     align = "c",
     format = "latex",
@@ -1097,7 +1103,6 @@ feature_importance_table <- importance_values %>%
 
 feature_importance_table
 ```
-
 ```{r random-forest-remove-unimportant-features}
 #| cache: true
 
@@ -1123,7 +1128,7 @@ rf_fs_1_conf_df <- rf_fs_1_conf_df %>% pivot_wider(names_from = Reference, value
 
 rf_fs_1_confm_table <- rf_fs_1_conf_df %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Confusion Matrix", 
+    caption = "Random Forest (5 least important features removed) Confusion Matrix \\label{tab:rf-fs1-cm}", 
     digits = 7, 
     format = "latex",
     align = "c",
@@ -1155,7 +1160,7 @@ rf_fs_1_overall_stats <- data.frame(
 
 rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Overall Statistics",
+    caption = "Random Forest (5 least important features removed) Overall Statistics \\label{tab:rf-fs1-stats}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     align = "lc",
@@ -1180,7 +1185,7 @@ rf_fs_1_byClass_stats <- as.data.frame(rf_fs_1_byClass_stats)
 rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Random Forest (5 least important features removed) Statistics by Class",
+    caption = "Random Forest (5 least important features removed) Statistics by Class \\label{tab:rf-fs1-classStats}",
     digits = 4,
     format = "latex",
     longtable = FALSE,
@@ -1194,7 +1199,6 @@ rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
 
 rf_fs_1_byClass_stats_table
 ```
-
 ```{r random-forest-remove-unimportant-features-feature-importance}
 #| cache: true
 
@@ -1202,7 +1206,7 @@ rf_fs_1_importance_values <- as.data.frame(importance(rf_feat_selection_1_model)
   arrange(desc(MeanDecreaseAccuracy))
 rf_fs_1_feature_importance_table <- rf_fs_1_importance_values %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Feature Importance", 
+    caption = "Random Forest (5 least important features removed) Feature Importance \\label{tab:rf-fs1-feat-importance}", 
     digits = 3, 
     align = "c",
     booktabs = TRUE,
@@ -1243,7 +1247,7 @@ rf_fs_2_conf_df <- rf_fs_2_conf_df %>% pivot_wider(names_from = Reference, value
 
 rf_fs_2_confm_table <- rf_fs_2_conf_df %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Confusion Matrix", 
+    caption = "Random Forest (5 least important features removed) Confusion Matrix \\label{tab:rf-fs2-cm}", 
     digits = 7, 
     format = "latex",
     longtable = FALSE,
@@ -1275,7 +1279,7 @@ rf_fs_2_overall_stats <- data.frame(
 
 rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Overall Statistics",
+    caption = "Random Forest (5 least important features removed) Overall Statistics \\label{tab:rf-fs2-stats}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     longtable = FALSE,
@@ -1300,7 +1304,7 @@ rf_fs_2_byClass_stats <- as.data.frame(rf_fs_2_byClass_stats)
 rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Random Forest (5 least important features removed) Statistics by Class",
+    caption = "Random Forest (5 least important features removed) Statistics by Class \\label{tab:rf-fs2-classStats}",
     digits = 4,
     format = "latex",
     longtable = FALSE,
@@ -1314,7 +1318,6 @@ rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
 
 rf_fs_2_byClass_stats_table
 ```
-
 ```{r random-forest-remove-important-features-feature-importance}
 #| cache: true
 
@@ -1322,7 +1325,7 @@ rf_fs_2_importance_values <- as.data.frame(importance(rf_feat_selection_2_model)
   arrange(desc(MeanDecreaseAccuracy))
 rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
   kable(
-    caption = "Random Forest (5 least important features removed) Feature Importance", 
+    caption = "Random Forest (5 least important features removed) Feature Importance \\label{tab:rf-fs2-feat-importance}", 
     digits = 3, 
     longtable = FALSE,
     format = "latex",
@@ -1337,8 +1340,8 @@ rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
 
 rf_fs_2_feature_importance_table
 ```
-
 ```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**"}
+#| label: fig-tune-mtry
 #| cache: true
 
 train_data_no_label <- train_data %>% select(- label)
@@ -1358,7 +1361,6 @@ tuneRF_result <- tuneRF(
 optimal_mtry <- tuneRF_result[which.min(tuneRF_result[, "OOBError"]), "mtry"]
 
 ```
-
 ```{r random-forest-tuned-results}
 #| cache: true
 
@@ -1379,7 +1381,7 @@ rf_tuned_conf_df <- rf_tuned_conf_df %>% pivot_wider(names_from = Reference, val
 
 rf_tuned_confm_table <- rf_tuned_conf_df %>%
   kable(
-    caption = "Tuned Random Forest Confusion Matrix", 
+    caption = "Tuned Random Forest Confusion Matrix \\label{tab:rf-tuned-cm}", 
     digits = 7, 
     longtable = FALSE,
     align = "c",
@@ -1411,7 +1413,7 @@ rf_tuned_overall_stats <- data.frame(
 
 rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
   kable(
-    caption = "Tuned Random Forest Overall Statistics",
+    caption = "Tuned Random Forest Overall Statistics \\label{tab:rf-tuned-stats}",
     longtable = FALSE,
     col.names = c("Statistic", "Value"),
     digits = 4,
@@ -1436,7 +1438,7 @@ rf_tuned_byClass_stats <- as.data.frame(rf_tuned_byClass_stats)
 rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Tuned Random Forest Statistics by Class",
+    caption = "Tuned Random Forest Statistics by Class \\label{tab:rf-tuned-classStats}",
     digits = 4,
     format = "latex",
     longtable = FALSE,
@@ -1448,7 +1450,7 @@ rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
     font_size = 9
   )
 
-# rf_tuned_byClass_stats_table
+rf_tuned_byClass_stats_table
 
 ```
 
@@ -1566,47 +1568,46 @@ for (i in 1:length(models)) {
 }
 
 
-# svm_kernel_summary_table <- results_df %>%
-#   kable(
-#     caption = "SVM Performance with Different Kernels",
-#     col.names = c("Kernel", "Accuracy", "Kappa", 
-#                   "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
-#     digits = 4,
-#     longtable = FALSE,
-#     format = "latex",
-#     align = "lcccccc",
-#     booktabs = TRUE
-#   ) %>%
-#   kable_styling(
-#     latex_options = c("striped", "hold_position", "scale_down"),
-#     font_size = 9
-#   )
-# svm_kernel_summary_table
+svm_kernel_summary_table <- results_df %>%
+  kable(
+    caption = "SVM Performance with Different Kernels \\label{tab:svm-kernal-accuracy}",
+    col.names = c("Kernel", "Accuracy", "Kappa",
+                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+    digits = 4,
+    longtable = FALSE,
+    format = "latex",
+    align = "lcccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+svm_kernel_summary_table
 ```
-
 ```{r svm-tune-hyperparameters, fig.cap="**Hyperparameter Affect on SVM Performance**"}
+#| label: fig-svm-hyperparameters
 #| cache: true
 
-# tune_grid <- expand.grid(
-#   C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
-#   sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
-# )
-# 
-# 
-# svm_tune <- train(
-#   label ~ .,
-#   data = train_data,
-#   method = "svmRadial",
-#   preProcess = NULL, 
-#   tuneGrid = tune_grid,
-#   trControl = trainControl(method = "cv", number = 5) # cv is crossvalidation, 5 is the number of folds 
-# )
-#   
-# 
-# plot(svm_tune)
+tune_grid <- expand.grid(
+  C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
+  sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
+)
+
+
+svm_tune <- train(
+  label ~ .,
+  data = train_data,
+  method = "svmRadial",
+  preProcess = NULL,
+  tuneGrid = tune_grid,
+  trControl = trainControl(method = "cv", number = 5) # cv is crossvalidation, 5 is the number of folds
+)
+
+
+plot(svm_tune)
 
 ```
-
 ```{r svm-final-summary-tables}
 #| cache: true
 
@@ -1725,7 +1726,6 @@ svm_final_byClass_stats_table
 
 
 ```
-
 ```{r plt-x7-vs-x8-misclassifications, fig.cap="**Misclassifications - X7 by X8**"}
 #| cache: true
 
@@ -1773,22 +1773,18 @@ svm was good but not as good as random forest. lots of tuning. feature selection
 
 ### Agglomerative Hierarchical Clustering
 
-
-
 ```{r silhouette-plot, fig.cap="**Silhouette Plot**"}
 #| cache: true
 
 fviz_nbclust(data_features, hcut, method = "silhouette", k.max = 10) +
   labs(title = "Optimal Number of Clusters - Silhouette Method")
 ```
-
 ```{r gap-stat-plot, fig.cap="**Gap Statistic Plot**"}
 #| cache: true
 
 fviz_nbclust(data_features, hcut, method = "gap_stat", k.max = 10, nboot = 50) +
   labs(title = "Optimal Number of Clusters - Gap Statistic")
 ```
-
 ```{r elbow-plot, fig.cap="**Elbow Graph**"}
 #| cache: true
 
@@ -1828,14 +1824,12 @@ In heirarchical clustering, we didn't see clear confirmation of four groups from
 
 The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts[@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are elipsoids of equal orientation, but varying volume[@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principle component)
 
-
 ```{r clustering-viz}
 #| cache: true
 fviz_mclust(fitM, "classification", geom = "point", pointsize = 1.5, palette = "jco")
 ```
 
-This looks really similar to our original PCA plot, with class A B and C seperated and class D overlapping all three.
-
+This looks really similar to the original PCA plot (\autoref{fig-pca}), with class A B and C seperated and class D overlapping all three.
 
 ```{r gmm-conf-matrix-and-stats-tables}
 #| cache: true
@@ -2252,7 +2246,6 @@ final_model <- fitM_fa
 
 fviz_mclust(fitM, "uncertainty")
 ```
-
 ```{r uncertainty-in-classes}
 #| cache: true
 
@@ -2411,7 +2404,6 @@ comparison_table
 
 
 ```
-
 ```{r bootstrap-unsupervised-results}
 # bootstrap_features <- bootstrap_data %>% select(-label)
 # bootstrap_labels <- bootstrap_data %>% select(label)
