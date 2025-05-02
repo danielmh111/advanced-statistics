@@ -236,6 +236,10 @@ ggplot(data_long, aes(x = value, fill = dist_group)) +
     scales = "free"
     ) +
   theme_minimal() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  ) +
   labs(
     x = "Value", 
     y = "Count", 
@@ -293,12 +297,12 @@ boxplot <- ggplot( boxplot_data,  aes(label, Value, colour=label)  ) +
   geom_rect(data = subset(boxplot_data, important == "1") %>% 
               distinct(Feature, important),
             aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-            color = "red", fill = NA, size = 0.5, alpha = 0.8,
+            color = "red", fill = NA, size = 0.7, alpha = 0.8,
             inherit.aes = FALSE) +
   geom_rect(data = subset(boxplot_data, important == "-1") %>% 
               distinct(Feature, important),
             aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
-            color = "blue", fill = NA, size = 0.5, alpha = 0.8,
+            color = "blue", fill = NA, size = 0.7, alpha = 0.8,
             inherit.aes = FALSE)
 
 boxplot
@@ -326,9 +330,9 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
         ,size=1
       ) +
       labs(
-          colour="Class Label"
+          colour="Class"
         ) +
-  geom_density2d(alpha=0.75)
+  geom_density2d(alpha=0.7)
     
 ```
 
@@ -537,7 +541,8 @@ simp_logreg_confm_table
 simp_logreg_overall_stats <- data.frame(
   Statistic = names(simple_logreg_conf_matrix$overall),
   Value = simple_logreg_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
@@ -548,7 +553,8 @@ simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
     format = "latex",
     digits = 4,
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -653,7 +659,8 @@ logreg_featselection_1_confm_table
 logreg_featselection_1_overall_stats <- data.frame(
   Statistic = names(logreg_featselection_1_conf_matrix$overall),
   Value = logreg_featselection_1_conf_matrix$overall
-)
+)  %>%
+  filter(Statistic != "McnemarPValue")
 
 
 logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_stats %>%
@@ -664,7 +671,8 @@ logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_sta
     align = "lc",
     longtable = FALSE,
     format = "latex",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -745,7 +753,8 @@ logreg_featselection_2_confm_table
 logreg_featselection_2_overall_stats <- data.frame(
   Statistic = names(logreg_featselection_2_conf_matrix$overall),
   Value = logreg_featselection_2_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_stats %>%
@@ -756,7 +765,8 @@ logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_sta
     digits = 4,
     format = "latex",
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -841,7 +851,8 @@ weighted_logreg_confm_table
 weighted_logreg_overall_stats <- data.frame(
   Statistic = names(weighted_logreg_conf_matrix$overall),
   Value = simple_logreg_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
@@ -852,7 +863,8 @@ weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
     format = "latex",
     longtable = FALSE,
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -949,7 +961,7 @@ decay_summary_table <- results_df %>%
   )
 decay_summary_table
 ```
-```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**"}
+```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**", out.width="100%", fig.margin=TRUE}
 #| label: fig-rlogreg
 #| cache: true
 
@@ -988,13 +1000,13 @@ best_reg_conf_table
 
 ```
 
-The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85% (. weighting did nothing, as expected. regularization didn't really do anything. feature selection did not improve the model. We saw that the model particularly underperformed at classifying class D correctly.
+The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85%. Weighting was not effective for improving the model, as expected given the balance of the class labels. Regularization and feature selection were also ineffective - somewhat suprising given the multicollinearilty seem in some columns. We saw that the model particularly underperformed at classifying class D correctly.
 
 ### Random Forest
 
 ```{r random-forest-base}
 #| cache: true
-
+invisible({
 rf_model <- randomForest(
   label ~ ., 
   data = train_data,
@@ -1002,6 +1014,7 @@ rf_model <- randomForest(
   mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
   importance = TRUE       
 )
+})
 rf_predictions <- predict(rf_model, test_data)
 rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$label)
 
@@ -1037,7 +1050,8 @@ rf_confm_table
 rf_overall_stats <- data.frame(
   Statistic = names(rf_conf_matrix$overall),
   Value = rf_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 rf_overall_stats_table <- rf_overall_stats %>%
@@ -1048,7 +1062,8 @@ rf_overall_stats_table <- rf_overall_stats %>%
     longtable = FALSE,
     format = "latex",
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -1155,7 +1170,8 @@ rf_fs_1_confm_table
 rf_fs_1_overall_stats <- data.frame(
   Statistic = names(rf_fs_1_conf_matrix$overall),
   Value = rf_fs_1_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
@@ -1166,7 +1182,8 @@ rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
     align = "lc",
     longtable = FALSE,
     format = "latex",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -1274,7 +1291,8 @@ rf_fs_2_confm_table
 rf_fs_2_overall_stats <- data.frame(
   Statistic = names(rf_fs_2_conf_matrix$overall),
   Value = rf_fs_2_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
@@ -1285,7 +1303,8 @@ rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
     longtable = FALSE,
     format = "latex",
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -1340,7 +1359,7 @@ rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
 
 rf_fs_2_feature_importance_table
 ```
-```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**"}
+```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**", out.width="100%", fig.margin=TRUE}
 #| label: fig-tune-mtry
 #| cache: true
 
@@ -1408,7 +1427,8 @@ rf_tuned_confm_table
 rf_tuned_overall_stats <- data.frame(
   Statistic = names(rf_tuned_conf_matrix$overall),
   Value = rf_tuned_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
@@ -1419,7 +1439,8 @@ rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
     digits = 4,
     format = "latex",
     align = "lc",
-    booktabs = TRUE
+    booktabs = TRUE,
+    row.names = FALSE
   ) %>%
   kable_styling(
     latex_options = c("striped", "hold_position"),
@@ -1454,7 +1475,7 @@ rf_tuned_byClass_stats_table
 
 ```
 
-The random forest performed well without any configuration. feature selection was not effective. still struggled at seperating class D. mtry was tuned.
+The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that .
 
 ### SVM
 
@@ -1728,25 +1749,6 @@ svm_final_byClass_stats_table
 ```
 ```{r plt-x7-vs-x8-misclassifications, fig.cap="**Misclassifications - X7 by X8**"}
 #| cache: true
-
-ggplot(test_data, aes(x = X7, y = X8, color = label, shape = label)) +
-  geom_point(size = 3, alpha = 0.7) +
-  labs(title = "Feature Space: X7 vs X8",
-       x = "X7", y = "X8",
-       color = "Actual Class",
-       shape = "Actual Class") +
-  theme_minimal()
-
-
-svm_prediction_df <- data.frame(
-  X7 = test_data$X7,
-  X8 = test_data$X8,
-  Actual = test_data$label,
-  Predicted = svm_final_predictions,
-  Correct = test_data$label == svm_final_predictions
-)
-
-
 ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Predicted, shape = Actual)) +
   geom_point(size = 3, alpha = 0.7) +
   labs(title = "SVM Classification: X7 vs X8",
@@ -1796,7 +1798,7 @@ ahc was good not great.
 
 ### Gaussian Mixed Model Clustering
 
-```{r gmm-bic, results='hide', message=FALSE, warning=FALSE, fig.cap="**Baysian Information Criteria Plot for Choosing Optimal Model**"}
+```{r gmm-bic, results='hide', message=FALSE, warning=FALSE, fig.cap="**Baysian Information Criteria Plot for Choosing Optimal Model**", out.width="100%", fig.margin=TRUE}
 #| cache: true
 
 # using this invisible function to stop printing to the console appearing in the pdf, courtesy of chatgpt
@@ -1915,7 +1917,8 @@ gmm_confm_table
 gmm_overall_stats <- data.frame(
   Statistic = names(gmm_conf_matrix$overall),
   Value = gmm_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 gmm_overall_stats_table <- gmm_overall_stats %>%
@@ -2061,7 +2064,7 @@ The best performing model did not use regularization.
 The motivation for using regularization is to help the model perform better when using features that correlate together. Since regularization in fact hindered performance, another approach is to use factor analysis to reduce the dimensionality of the data. 
 Factor analysis is suitable because it is suited to handling the groups of correlated features notable in the EDA results, and because the data is biological in origin. With biological data, there is often an underlying cause, like a gene expression, that can have many measurable implecations, like disease symptoms or physical characteristics. Because we know these mechanisms may exist in the source of our data, factor analysis is a good choice to reduce dimensions while preserving as much information as possible.
 
-```{r fa-scree-plt, fig.cap="**Scree Plot:** *for Choosing Number of Factors for Dimensionality Reduction*"}
+```{r fa-scree-plt, fig.cap="**Scree Plot:** *for Choosing Number of Factors for Dimensionality Reduction*", out.width="100%", fig.margin=TRUE}
 #| cache: true
 
 invisible({
@@ -2077,7 +2080,7 @@ The parallel analysis results suggest that the optimum number of factors is 6. U
 
 The underlying values from the analysis show that the first two factors contribute the most, with a sharp drop after that. So a dimensionality reduction to two factors could be a reasonable option. We can also see that the seventh and eigth eigenvalues are not much smaller than the sixth, so swapping some of the smaller factors could also be a justifyable experiment.
 
-```{r fa-loadings, fig.cap="**Factor Analysis Loadings:** *loadings values by feature*"}
+```{r fa-loadings, fig.cap="**Factor Analysis Loadings:** *loadings values by feature*", out.width="100%", fig.margin=TRUE}
 #| cache: true
 
 fa_result <- fa(data_features, 
@@ -2187,7 +2190,8 @@ gmm_fa_confm_table
 gmm_fa_overall_stats <- data.frame(
   Statistic = names(gmm_conf_matrix$overall),
   Value = gmm_conf_matrix$overall
-)
+) %>%
+  filter(Statistic != "McnemarPValue")
 
 
 gmm_fa_overall_stats_table <- gmm_fa_overall_stats %>%
@@ -2239,7 +2243,7 @@ However, the fact that factor analysis leads to increased accuracy overall while
 
 #### Model Evaluation
 
-```{r cluster-uncertainty, fig.cap="**Cluster Uncertainty Plot:** *Clusters shown with uncertain points by size*"}
+```{r cluster-uncertainty, fig.cap="**Cluster Uncertainty Plot:** *Clusters shown with uncertain points by size*", out.width="100%", fig.margin=TRUE}
 #| cache: true
 
 final_model <- fitM_fa
