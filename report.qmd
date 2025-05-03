@@ -1,6 +1,6 @@
 ---
 title: "Advanced Statistics: Application of supervised and unsupervised methods to biological data"
-author: "Daniel Hill"
+author: "Daniel Hill (Student ID: 24057087)"
 date: "27 April 2025"
 format: 
   pdf:
@@ -8,7 +8,7 @@ format:
     classoption: twocolumn
     number-sections: true
     toc: true
-    toc-depth: 3
+    toc-depth: 2
     toc-title: Contents
     lof: true
     lot: true
@@ -36,6 +36,7 @@ include-in-header:
     \usepackage{ltablex}
     \usepackage{titling}
     \usepackage{float}
+    \usepackage{appendix}
     \pretitle{\begin{center}\LARGE\bfseries}
     \posttitle{\end{center}}
     \preauthor{\begin{center}\large}
@@ -96,62 +97,15 @@ Each of the 3000 observations has 20 numeric features and a label placing it in 
 
 Bootstrap sampling was used to create a larger dataset so that the performance of the models could be compared between the original and bootstrapped data.
 
-\onecolumn
-```{r feature-data-descriptions}
+The description of the predictive features shows the range of scales, ranging by and order of magnitude (\autoref{tab:feat-desc}, \autoref{tab:feat-desc-post} in Appendix: Data Description Tables). Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
+
+```{r read-data}
 #| cache: true
 
 data <- read_csv("Data(2).csv")
 
-desc <- skim(data)
-desc <- desc %>% 
-  select(
-    skim_variable, 
-    n_missing, 
-    numeric.mean, 
-    numeric.sd, 
-    numeric.p0, 
-    numeric.p25, 
-    numeric.p50, 
-    numeric.p75, 
-    numeric.p100, 
-  ) %>% 
-  filter(
-    skim_variable != "label"
-  ) %>%
-  rename(
-    "Variable Name" = skim_variable, 
-    "No. missing values" = n_missing, 
-    "mean" = numeric.mean, 
-    "Std deviation" = numeric.sd, 
-    "min" = numeric.p0, 
-    "25th %ile" = numeric.p25, 
-    "median" = numeric.p50, 
-    "75th %ile" = numeric.p75, 
-    "max" = numeric.p100, 
-  ) %>%
-  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) 
 
-desc_table <- desc %>% 
-  kable(
-    caption = "Feature Descriptions \\label{tab:feat-desc}", 
-    digits = 3, 
-    align = "c",
-    booktabs = TRUE,
-    na="-",
-    longtable = T,
-    label = 
-  ) %>% 
-  kable_styling(
-    latex_options = c("striped", "hold_position", "scale_down"),
-    font_size = 9,
-    full_width = FALSE
-  )
-
-desc_table
 ```
-
-This description of the predictive features shows the range of scales, ranging by and order of magnitude (\autoref{tab:feat-desc}). Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
-\twocolumn
 
 ## Exploratory Data Analysis Approach
 
@@ -201,7 +155,7 @@ The difference between these two group is that while X7, X8, and X9 are three fe
 
 Among the other columns, we see that there are definitly some columns with stronger correlations than others.
 
-To produce the correlation matrix, the four catagorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
+To produce the correlation matrix, the four catagorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, \autoref{fig-corrmap} shows us X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
 
 ```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*", out.width="100%"}
 #| label: fig-hists
@@ -430,9 +384,9 @@ hopkins_table <- df %>%
 hopkins_table
 ```
 
-There is a very high clustering tendency for various treatments of the data (\autoref{tab:hopkins}). The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
+There is a very high clustering tendency for various treatments of the data, as presented in \autoref{tab:hopkins}. The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
 
-Similarly, the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots. This means that even the features with low correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models that do not correspond with the given labels.
+Similarly, the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots (\autoref{fig-boxplots}). This means that even the features with low correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models that do not correspond with the given labels.
 
 Overall, we see from exploritory data analysis that this data contains high amounts of information usable for predictive modelling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that could hinder model performance.
 
@@ -446,12 +400,12 @@ data_features <- data %>% select(-label)
 
 ## Supervised Learning Methods
 
-### logistic regression - including class weighting, L2 regularization, and feature selection.
-A simple model, logistic regression is quick to implement and will reveal more about the data, in particular how different features contribute to predictions [@MultinomialLogisticRegression18:24:37+00:00].
+### logistic regression - class weighting, regularization, feature selection.
+A simple model, logistic regression is quick to implement and will reveal more about the data, in particular how different features contribute to predictions [@MultinomialLogisticRegression].
 
-There are variations such as weighting and regularization [@jamesIntroductionStatisticalLearning2023, pp. 240-253] which will be implemented - the success of lack of success of these techniques will reveal characteristics about our data that will be valuable to inform the selection and implementation of other models [@WeightedLogisticRegression09:33:43+00:00]
+There are variations such as weighting and regularization [@jamesIntroductionStatisticalLearning2023, pp. 240-253] which will be implemented - the success of lack of success of these techniques will reveal characteristics about our data that will be valuable to inform the selection and implementation of other models [@WeightedLogisticRegression]
 
-### Random forest, including feature selection and tuning of mtry.
+### Random forest, feature selection, tuning of mtry.
 Random Forest was chosen due to its resilience. One of the more robust option, it is a good choice for handling the data without extra processing. Several characteristics of the data have been identified that may cause othe models such as logistic regression and SVM to struggle: 
   - Correlated of features 
   - Features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable 
@@ -459,15 +413,15 @@ Random Forest was chosen due to its resilience. One of the more robust option, i
 
 Random Forest is a robust algorithm with few underlying assumptions that will handle these considerations well [@jamesIntroductionStatisticalLearning2023 pp. 346-347]. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may peform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modelling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for descerning between class A and D, and then refine the selection in further nodes.
 
-### SVM, including feature selection, tuning of kernel selection, gamma, and cost parameters.
+### SVM, feature selection, tuning kernel selection, gamma, cost parameters.
 SVM is a powerful and popular algorith. SVM has options for different kernals that can be tuned, and this is a promising approach to solving the challenges of seperating class A from class D that is evedent from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 382]. It might be the case that A and D aren't linearly seperable, but a non-linear kernal will have success.
 
 ## Unsupervised Learning Methods
 
-### Agglomerative hierarchical clustering, including tuning of linking metric.
-Agglomerative heirarchical clustering was chosen because it is interesting to explore a model where the number of clusters is not specified and let the natural structure of the data reveal itself.
+### Agglomerative hierarchical clustering, tuning linking metric.
+Agglomerative hierarchical clustering was chosen because it is interesting to explore a model where the number of clusters is not specified and let the natural structure of the data reveal itself.
 
-Biological data is often naturally heirarchical, for example animals can be classified by deviding them into first kingdoms, then families of species, and finally species and sub-species [@caiESPRITForestParallelClustering2017].
+Biological data is often naturally hierarchical, for example animals can be classified by deviding them into first kingdoms, then families of species, and finally species and sub-species [@caiESPRITForestParallelClustering2017].
 
 Although the exact meaning of each feature in the data isn't known, it is biological in origin (perhaps gene expressions or environmental factors). This means that there may be a heirarchy of classes in our data.
 
@@ -475,18 +429,18 @@ Using this method without specifying that there are four values for label might 
 
 It is also a model that handles the feature correlation well, which allows us to keep in all the collumns that correlate like X7, X8, and X9.
 
-### Gaussian mixture model clustering, including model seclection, regularization and dimensionality reduction using factor analysis.
+### Gaussian mixture model clustering, model seclection, regularization, dimensionality reduction using factor analysis.
 So far while working with this data set, it has been challenging to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data.
 
-Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. I have chosen to try a gaussian mixture model (gmm) - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
+Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. A Gaussian Mixture Model (gmm) approach was chosen - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
 
-Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters[@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not heirarchical in nature.
+Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters[@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not hierarchical in nature.
 
 # Results
 
-## Supervised Learning Results
+In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evalutation can be found in notebooks [@Hill_Advanced-Statistics]. 
 
-In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evalutation can be found in notebooks [@Hill_Advanced-Statistics]
+## Supervised Learning Results
 
 ### Logistic Regression
 
@@ -1001,9 +955,11 @@ best_reg_conf_table
 
 ```
 
-The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85%. Weighting was not effective for improving the model, as expected given the balance of the class labels. Regularization and feature selection were also ineffective - somewhat suprising given the multicollinearilty seem in some columns. We saw that the model particularly underperformed at classifying class D correctly.
+The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85% shown in \autoref{tab:slogreg-stats}. Weighting was not effective for improving the model, as expected given the balance of the class labels (\autoref{tab:w-logreg-stats}). Regularization and feature selection were also ineffective (\autoref{tab:r-logreg-sum}) - somewhat suprising given the multicollinearilty seem in some columns. We saw that the model particularly underperformed at classifying class D correctly (\autoref{tab:slogreg-classStats}).
 
-### Random Forest
+### Random Forest {.avoid-page-break}
+
+The random forest performed well without any configuration, achieving 90% accuracy, shown in \autoref{tab:brf-cm}. No meaningful improvement was possible through feature selection or tuning. We learned that from the feature importance of each model that a few features were dominating the decisions made by the model - this will inform the approach to feature selection and dimensionality reduction when testing other learning approaches.
 
 ```{r random-forest-base}
 #| cache: true
@@ -1363,6 +1319,7 @@ rf_fs_2_feature_importance_table
 ```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**", out.width="100%", fig.margin=TRUE}
 #| label: fig-tune-mtry
 #| cache: true
+#| output: false
 
 train_data_no_label <- train_data %>% select(- label)
 
@@ -1475,10 +1432,6 @@ rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
 rf_tuned_byClass_stats_table
 
 ```
-
-The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that from the feature importance of each model that a few features were dominating the decisions made by the model - this will inform the approach to feature selection and dimensionality reduction when testing other learning approaches.
-
-### SVM
 
 ```{r svm-kernel-selection}
 #| cache: true
@@ -1675,7 +1628,7 @@ svm_final_conf_df <- svm_final_conf_df %>% pivot_wider(names_from = Reference, v
 
 svm_final_confm_table <- svm_final_conf_df %>%
   kable(
-    caption = "SVM Tuned Model Confusion Matrix",
+    caption = "SVM Tuned Model Confusion Matrix \\label{tab:svm_tuned_cf}",
     digits = 7,
     longtable = FALSE,
     align = "c",
@@ -1707,7 +1660,7 @@ svm_final_overall_stats <- data.frame(
 
 svm_final_overall_stats_table <- svm_final_overall_stats %>%
   kable(
-    caption = "SVM Tuned Model Overall Statistics",
+    caption = "SVM Tuned Model Overall Statistics \\label{tab:svm_tuned_stats}",
     col.names = c("Statistic", "Value"),
     digits = 4,
     longtable = FALSE,
@@ -1732,7 +1685,7 @@ svm_final_byClass_stats <- as.data.frame(svm_final_byClass_stats)
 svm_final_byClass_stats_table <- svm_final_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "SVM Tuned Model Statistics by Class",
+    caption = "SVM Tuned Model Statistics by Class \\label{tab:svm_tuned_class_stats}",
     longtable = FALSE,
     digits = 4,
     align = "lccccc",
@@ -1750,6 +1703,7 @@ svm_final_byClass_stats_table
 ```
 \clearpage
 ```{r plt-x7-vs-x8-misclassifications, fig.cap="**Classifications and Misclassifications - X7 by X8**", fig.margin=TRUE, out.width="100%", fig.height=6, fig.pos="H"}
+#| label: fig-x78-misclassifcations
 #| cache: true
 
 svm_prediction_df <- data.frame(
@@ -1786,8 +1740,13 @@ svm_x78_combined_plot
 
 ```
 
+### SVM {.page-break-avoid}
 
-svm was good but not as good as random forest. lots of tuning. feature selection was uneffective
+SVM was tuned to find the best performing kernel was radial (\autoref{tab:svm-kernal-accuracy}), and optimal hyperparameters were found. \autoref{fig-svm-hyperparameters} visualizes the tuning approach, and a progressively finer mesh of parameter values was used to find the maximum accuracy. 
+
+SVM performed well with overall accuracy on par with random forest (\autoref{tab:svm_tuned_stats}, \autoref{tab:rf-tuned-stats}), but SVM actually had a higher F1 score on the challenging class D, while random forests' high overall accuracy was formed in part by excelling at classifying class B (\autoref{tab:svm_tuned_class_stats}, \autoref{tab:rf-tuned-classStats}). This suggests that between the two, SVM could be the better choice for a lot of use cases.
+
+The tuning of SVM was extensive, and it is unlikely that performance can be improved much further using a model with this architecture. \autoref{fig-x78-misclassifcations} visualizes the actual classes vs the predicted classes, and shows that the misclassifications are spread across the feature space with little pattern, suggesting that a decision boundary that seperates them into their correct classes will be very challenging to find.
 
 ## Unsupervised Learning Results
 
@@ -1950,7 +1909,7 @@ pruned_ward_dend <- set(pruned_ward_dend, "labels", rep("", length(leaf_labels))
 
 pruned_ward_dend <- set(pruned_ward_dend, "leaves_pch", 19) 
 pruned_ward_dend <- set(pruned_ward_dend, "leaves_col", class_colors[class_labels])
-pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 1.75) 
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 1.5) 
 
 plot(pruned_ward_dend, 
      main = "Hierarchical Clustering - Ward Linkage",
@@ -1959,9 +1918,15 @@ plot(pruned_ward_dend,
      axes = T
 )
 
+legend("topright", 
+       legend = unique(data_labels$label),
+       col = class_colors,
+       pch = 19,
+       title = "Original Classes",
+       cex = 0.8)
 
 ```
-Agglomerative hierarchical clustering was found to be an inappropriate method for this data set. After testing several linkage methods, they were all found to produce unbalanced clusters, whereas we know that the data is evenly divided into four almost equal classes. The ward linkage produced the most balanced clusters, but even there one cluster contained almost 40% of all observations (\autoref{tab:hc_cluster_balance}. From its dendrogram, \autoref{fig-dend}, each cluster can be seen to contain a mixture of original class labels. This means that as well as producing unbalanced classes, there were likely to be misclassifications within each cluster as well. Due to its poor performance to this point, hierarchical clustering was not pursued further.
+Agglomerative hierarchical clustering was found to be an inappropriate method for this data set. After testing several linkage methods, they were all found to produce unbalanced clusters, whereas we know that the data is evenly divided into four almost equal classes. The ward linkage produced the most balanced clusters, but even there one cluster contained almost 40% of all observations (\autoref{tab:hc_cluster_balance}). From the dendrogram, \autoref{fig-dend}, each cluster can be seen to contain a mixture of original class labels. This means that as well as producing unbalanced classes, there were likely to be misclassifications within each cluster as well. Due to its poor performance to this point, hierarchical clustering was not pursued further.
 
 ### Gaussian Mixed Model Clustering
 
@@ -1989,7 +1954,7 @@ plot(BIC)
 ```
 VVE was found to be the best performing model. Promisingly, the plot peaked at four clusters. Since it is known that there actually are four categorical classes in the original data, this shows that the model is learning from the distributions of all four labels. Since we saw such overlap in classes and many misclassifications in class D previously, it would have been unsuprising to see three as the optimum number of classes,suggesting that data was better described by three categories than four. 
 
-In heirarchical clustering, we didn't see clear confirmation of four groups from the graphs using either the elbow method, gap method, or silloette method.
+In hierarchical clustering, we didn't see clear confirmation of four groups from the graphs using either the elbow method, gap method, or silloette method.
 
 The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts[@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are elipsoids of equal orientation, but varying volume[@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principle component)
 
@@ -2057,7 +2022,7 @@ gmm_conf_df <- gmm_conf_df %>% pivot_wider(names_from = Reference, values_from =
 
 gmm_confm_table <- gmm_conf_df %>%
   kable(
-    caption = "Gaussian Mixture Model Confusion Matrix", 
+    caption = "Gaussian Mixture Model Confusion Matrix \\label{tab:gmm-cm}", 
     digits = 7, 
     align = "c",
     longtable = FALSE,
@@ -2090,7 +2055,7 @@ gmm_overall_stats <- data.frame(
 
 gmm_overall_stats_table <- gmm_overall_stats %>%
   kable(
-    caption = "Gaussian Mixture Model Overall Statistics",
+    caption = "Gaussian Mixture Model Overall Statistics \\label{tab:gmm-stats}",
     col.names = c("Statistic", "Value"),
     longtable = FALSE,
     format = "latex",
@@ -2115,7 +2080,7 @@ gmm_byClass_stats <- as.data.frame(gmm_byClass_stats)
 gmm_byClass_stats_table <- gmm_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Gaussian Mixture Model Statistics by Class",
+    caption = "Gaussian Mixture Model Statistics by Class \\label{tab:gmm-class-stats}",
     digits = 4,
     longtable = FALSE,
     align = "lccccc",
@@ -2131,7 +2096,7 @@ gmm_byClass_stats_table
 
 ```
 
-Gaussian mixed model clustering performed very well. It immediately had overall accuracy comparible with random forest, and performed notebly better than other models at seperating the fourth class successfully, with an F1 score of 0.8. 
+Gaussian mixed model clustering performed very well (\autoref{tab:gmm-cm}, \autoref{tab:gmm-stats}). It immediately had overall accuracy comparible with random forest and svm, and performed notebly better than other models at seperating the fourth class successfully, with an F1 score of 0.8 (\autoref{tab:gmm-class-stats}). 
 
 Attempts were made to further tune the model through regularization:
 
@@ -2207,7 +2172,7 @@ gmm_comparison <- do.call(rbind, results_list)
 
 gmm_comparison_table <- gmm_comparison %>%
   kable(
-    caption = "Gaussian Mixture Model Performance with Different Regularization Settings",
+    caption = "Gaussian Mixture Model Performance with Different Regularization Settings \\label{tab:ggm-reg-comp}",
     col.names = c("Model", "ARI", "Accuracy", 
                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
     digits = 4,
@@ -2226,12 +2191,13 @@ gmm_comparison_table <- gmm_comparison %>%
 gmm_comparison_table
 ```
 
-The best performing model did not use regularization. 
+The best performing model did not use regularization (\autoref{tab:ggm-reg-comp}). 
 
 The motivation for using regularization is to help the model perform better when using features that correlate together. Since regularization in fact hindered performance, another approach is to use factor analysis to reduce the dimensionality of the data. 
 Factor analysis is suitable because it is suited to handling the groups of correlated features notable in the EDA results, and because the data is biological in origin. With biological data, there is often an underlying cause, like a gene expression, that can have many measurable implecations, like disease symptoms or physical characteristics. Because we know these mechanisms may exist in the source of our data, factor analysis is a good choice to reduce dimensions while preserving as much information as possible.
 
 ```{r fa-scree-plt, fig.cap="**Scree Plot:** *for Choosing Number of Factors for Dimensionality Reduction*", out.width="100%", fig.margin=TRUE}
+#| label: fig-scree-plot
 #| cache: true
 
 invisible({
@@ -2243,7 +2209,7 @@ invisible({
 })
 ```
 
-The parallel analysis results suggest that the optimum number of factors is 6. Using the maximum likelyhood method finds the number of factors where the value of the eigenvalue is above what would be expected by random chance.
+The parallel analysis results suggest that the optimum number of factors is 6 (\autoref{fig-scree-plot}). Using the maximum likelyhood method finds the number of factors where the value of the eigenvalue is above what would be expected by random chance.
 
 The underlying values from the analysis show that the first two factors contribute the most, with a sharp drop after that. So a dimensionality reduction to two factors could be a reasonable option. We can also see that the seventh and eigth eigenvalues are not much smaller than the sixth, so swapping some of the smaller factors could also be a justifyable experiment.
 
@@ -2284,7 +2250,7 @@ ggplot(loadings_long, aes(x = Factor, y = Feature, fill = Loading)) +
 
 The loadings of features to factors shows the highly correlated features in the correlated groups are all heavily loaded to the same factor, which will succesfully decrease the multicolinearily present in the dataset.
 
-```{r ggm-with-fa}
+```{r ggm-fa } 
 #| cache: true
 
 factor_scores <- factor.scores(data_features, fa_result)$scores
@@ -2330,8 +2296,8 @@ gmm_fa_conf_df <- gmm_fa_conf_df %>% pivot_wider(names_from = Reference, values_
 
 gmm_fa_confm_table <- gmm_fa_conf_df %>%
   kable(
-    caption = "Gaussian Mixture Model Confusion Matrix", 
     digits = 7, 
+    caption = "Gaussian Mixture Model using Factors - Confusion Matrix \\label{tab:ffm-fa-cm}", 
     longtable = FALSE,
     align = "c",
     format = "latex",
@@ -2356,15 +2322,15 @@ gmm_fa_confm_table
 
 gmm_fa_overall_stats <- data.frame(
   Statistic = names(gmm_conf_matrix$overall),
-  Value = gmm_conf_matrix$overall
+  Value = gmm_fa_conf_matrix$overall
 ) %>%
   filter(Statistic != "McnemarPValue")
 
 
 gmm_fa_overall_stats_table <- gmm_fa_overall_stats %>%
   kable(
-    caption = "Gaussian Mixture Model Overall Statistics",
     col.names = c("Statistic", "Value"),
+    caption = "Gaussian Mixture Model using Factors - Overall Statistics \\label{tab:ggm-fa-stats}",
     digits = 4,
     longtable = FALSE,
     align = "lc",
@@ -2388,8 +2354,8 @@ gmm_fa_byClass_stats <- as.data.frame(gmm_fa_byClass_stats)
 gmm_fa_byClass_stats_table <- gmm_fa_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
-    caption = "Gaussian Mixture Model Statistics by Class",
     digits = 4,
+    # caption = "Gaussian Mixture Model using Factors - Statistics by Class \\{ggm-fa-class-stats}",
     longtable = FALSE,
     format = "latex",
     align = "lccccc",
@@ -2404,7 +2370,7 @@ gmm_fa_byClass_stats_table
 
 ```
 
-Operating on the factors rather than the original features, overall accuracy is slightly higher and the balanced accuracy of cluster 3 (class D) is slightly lower. This is a trade off that requires more knowledge of the intended use of the model to make a choice between the two.
+Operating on the factors rather than the original features, overall accuracy is slightly higher (\autoref{tab:ggm-fa-stats}) and the balanced accuracy of cluster 3 (class D) is slightly lower (\autoref{tab:ggm-fa-class-stats}). This is a trade off that requires more knowledge of the intended use of the model to make a choice between the two.
 
 However, the fact that factor analysis leads to increased accuracy overall while decreasing the dimensionality of the data so far is an interesting finding.
 
@@ -2454,7 +2420,7 @@ uncertainty_table
 
 ## Bootstrapping
 
-Bootstrapping was used to oversample the original dataset and increase the number of observations to 10,000. With a test-train split of 70%-30%, the model were trained on 7000 observations for supervised methods. All three models recieve a modest bump in overall accuracy and in the Class D F1 score (*table 41*). This shows that the performance of any model can be improved without any further tuning by collecting a larger dataset from the population. However, the increases are small and it is very likely that the cost of collecting more data is prohibative given the performance gains that this analysis suggests can be expected. Given this finding, it is recommended that further research focuses on improved modelling techniques, or the collection data with new descriptive features. 
+Bootstrapping was used to oversample the original dataset and increase the number of observations to 10,000. With a test-train split of 70%-30%, the model were trained on 7000 observations for supervised methods. All three models recieve a modest bump in overall accuracy and in the Class D F1 score (\autoref{tab:bootstrap}). This shows that the performance of any model can be improved without any further tuning by collecting a larger dataset from the population. However, the increases are small and it is very likely that the cost of collecting more data is prohibative given the performance gains that this analysis suggests can be expected. Given this finding, it is recommended that further research focuses on improved modelling techniques, or the collection data with new descriptive features. 
 
 In unsupervised learning, the bootstrapping method leads to poor performance from the model based model, which now suggests an optimal number of clusters of 8. The duplication caused by boostrapping violates the assumptions that underpin the gaussian mixture model approach because it is assumed that the data is all drawn from the population produced by normal distribuitions. This means that bootstrapping is not appropriate for testing the performance of this model on a larger dataset.
 
@@ -2557,7 +2523,7 @@ comp_df = data.frame(
 # comp_df
 
 comparison_table <- comp_df %>% kable(
-    caption = "Comparison of Model Performance on Bootstrapped Data",
+    caption = "Comparison of Model Performance on Bootstrapped Data \\label{tab:bootstrap}",
     digits = 4,
     align = "lcccc",
     col.names = c("Model", "Accuracy", "Class D F1 Score", "Accuracy", "Class D F1 Score"),
@@ -2595,7 +2561,7 @@ comparison_table
 # Discussion
 
 The relative performance of different learning models can give some insight to the underlying structure of the data.
-If random forest and agglomerative hierarchical clustering performed significantly better than the other models, this would be evidence that the data was heirarchical in nature. If logistic regression performed as well as any of the other models, it would indicate that the data was extremely structured and easy to model, with strong linear relationships between the predictive features and the labels. The results found that random forest performed best followed by the radial kernel SVM. Both of these algorithms are better at modelling with non-linear relationships. This suggests that the the relationship between the features and the label exhibits some non-linearity. 
+If random forest and agglomerative hierarchical clustering performed significantly better than the other models, this would be evidence that the data was hierarchical in nature. If logistic regression performed as well as any of the other models, it would indicate that the data was extremely structured and easy to model, with strong linear relationships between the predictive features and the labels. The results found that random forest performed best followed by the radial kernel SVM. Both of these algorithms are better at modelling with non-linear relationships. This suggests that the the relationship between the features and the label exhibits some non-linearity. 
 
 There are also lessons learned from the challenge of seperating class D which arrose in every model that was implemented.
 Class D was harder for every model to correctly predict. In the context of biological data there are a several explainations of why this would happen, including that D is a super-class in a hierarchy where the other three are sub classes. This appears unlikely due to the underperformance of agglomerative hierarchical clustering. 
@@ -2621,7 +2587,7 @@ An exciting direction to take forward the success of gmm would be to experiment 
 
 
 # References
-::: {~#refs}
+::: {#refs}
 
 
 ---
@@ -2632,8 +2598,118 @@ nocite: |
 
 :::
 
+\clearpage  
+\onecolumn
+# Appendix {.appendix}
+\setcounter{table}{0}
+\renewcommand{\thetable}{A\arabic{table}}
+## Data Description Tables
 
+```{r feature-data-descriptions}
+#| cache: true
 
+data <- read_csv("Data(2).csv")
+
+desc <- skim(data)
+desc <- desc %>% 
+  select(
+    skim_variable, 
+    n_missing, 
+    numeric.mean, 
+    numeric.sd, 
+    numeric.p0, 
+    numeric.p25, 
+    numeric.p50, 
+    numeric.p75, 
+    numeric.p100, 
+  ) %>% 
+  filter(
+    skim_variable != "label"
+  ) %>%
+  rename(
+    "Variable Name" = skim_variable, 
+    "No. missing values" = n_missing, 
+    "mean" = numeric.mean, 
+    "Std deviation" = numeric.sd, 
+    "min" = numeric.p0, 
+    "25th %ile" = numeric.p25, 
+    "median" = numeric.p50, 
+    "75th %ile" = numeric.p75, 
+    "max" = numeric.p100, 
+  ) %>%
+  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) 
+
+desc_table <- desc %>% 
+  kable(
+    caption = "Feature Descriptions - Raw Data \\label{tab:feat-desc}", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-",
+    longtable = T,
+    label = 
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9,
+    full_width = FALSE
+  )
+
+desc_table
+```
+\onecolumn
+```{r feature-data-descriptions-postproccessing}
+#| cache: true
+
+data <- read_csv("data_clean.csv")
+
+desc <- skim(data)
+desc <- desc %>% 
+  select(
+    skim_variable, 
+    n_missing, 
+    numeric.mean, 
+    numeric.sd, 
+    numeric.p0, 
+    numeric.p25, 
+    numeric.p50, 
+    numeric.p75, 
+    numeric.p100, 
+  ) %>% 
+  filter(
+    skim_variable != "label"
+  ) %>%
+  rename(
+    "Variable Name" = skim_variable, 
+    "No. missing values" = n_missing, 
+    "mean" = numeric.mean, 
+    "Std deviation" = numeric.sd, 
+    "min" = numeric.p0, 
+    "25th %ile" = numeric.p25, 
+    "median" = numeric.p50, 
+    "75th %ile" = numeric.p75, 
+    "max" = numeric.p100, 
+  ) %>%
+  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) 
+
+desc_table <- desc %>% 
+  kable(
+    caption = "Feature Descriptions - Preprocessed \\label{tab:feat-desc-post}", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-",
+    longtable = T,
+    label = 
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9,
+    full_width = FALSE
+  )
+
+desc_table
+```
 
 
 
