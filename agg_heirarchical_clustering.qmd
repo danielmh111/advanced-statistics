@@ -159,3 +159,266 @@ labels(dend_complete) <- paste(as.character(data_labels)[order.dendrogram(dend)]
                            "(",labels(dend),")", 
                            sep = "")
 ```
+
+```{r}
+
+hc_complete_clusters <- cutree(hc_complete, k = 4)
+hc_complete_clusters
+```
+
+```{r}
+
+hc_complete_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_complete_clusters
+  )
+
+hc_complete_results
+```
+
+```{r}
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# for each original label find which cluster contains it most frequently
+label_to_cluster_map <- as.data.frame(hc_complete_results) %>%
+  group_by(label) %>%
+  summarise(modal_cluster = Mode(prediction), .groups = "drop") %>%
+  arrange(label)  
+
+# for each cluster find which original label appears most frequently
+cluster_to_label_map <- hc_complete_results %>%
+  group_by(prediction) %>%
+  summarise(modal_label = Mode(label), .groups = "drop") %>%
+  arrange(prediction)
+
+
+print("Label to Cluster mapping:")
+print(label_to_cluster_map)
+print("Cluster to Label mapping:")
+print(cluster_to_label_map)
+```
+
+
+This shows us that the hierarchical clustering approach is performing badly on our data - there ought to be four balanced clusters because the labels are uniformly distributed. Since B is the modal label in three of the clusters and A C and D are all have most of there labels in cluster 2, we have shown that hierarchical clustering is not good for predicting the class label. We can try the other linkage methods, and then we can try visualizing the data in two clusters to see if its better than four clusters
+
+
+
+```{r}
+
+hc_ward_clusters <- cutree(hc_ward, k = 4)
+hc_ward_clusters
+```
+
+```{r}
+
+hc_ward_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_ward_clusters
+  )
+
+hc_ward_results
+```
+
+```{r}
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# for each original label find which cluster contains it most frequently
+label_to_cluster_map <- as.data.frame(hc_ward_results) %>%
+  group_by(label) %>%
+  summarise(modal_cluster = Mode(prediction), .groups = "drop") %>%
+  arrange(label)  
+
+# for each cluster find which original label appears most frequently
+cluster_to_label_map <- hc_ward_results %>%
+  group_by(prediction) %>%
+  summarise(modal_label = Mode(label), .groups = "drop") %>%
+  arrange(prediction)
+
+
+print("Label to Cluster mapping:")
+print(label_to_cluster_map)
+print("Cluster to Label mapping:")
+print(cluster_to_label_map)
+```
+better but not good
+
+```{r}
+
+hc_average_clusters <- cutree(hc_average, k = 4)
+hc_complete_clusters
+```
+
+```{r}
+
+hc_average_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_average_clusters
+  )
+
+hc_average_results
+```
+okay looks more promising
+
+```{r}
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# for each original label find which cluster contains it most frequently
+label_to_cluster_map <- as.data.frame(hc_average_results) %>%
+  group_by(label) %>%
+  summarise(modal_cluster = Mode(prediction), .groups = "drop") %>%
+  arrange(label)  
+
+# for each cluster find which original label appears most frequently
+cluster_to_label_map <- hc_average_results %>%
+  group_by(prediction) %>%
+  summarise(modal_label = Mode(label), .groups = "drop") %>%
+  arrange(prediction)
+
+
+print("Label to Cluster mapping:")
+print(label_to_cluster_map)
+print("Cluster to Label mapping:")
+print(cluster_to_label_map)
+```
+better but still not good
+
+```{r}
+
+hc_complete_balance <- hc_complete_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_complete_balance
+
+```
+```{r}
+
+hc_ward_balance <- hc_ward_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_ward_balance
+
+```
+
+```{r}
+
+hc_average_balance <- hc_average_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_average_balance
+
+```
+
+best is ward linkage, but based on one cluster containing 40% of observations I think we can say that hierarchical is just not going to be good. 
+
+```{r}
+
+linkages <- c("Complete", "Ward", "Average")
+hc_complete_balance$`%`[4]
+cluster_1 <- c(hc_complete_balance$`%`[1], hc_ward_balance$`%`[1], hc_average_balance$`%`[1])
+cluster_2 <- c(hc_complete_balance$`%`[2], hc_ward_balance$`%`[2], hc_average_balance$`%`[2])
+cluster_3 <- c(hc_complete_balance$`%`[3], hc_ward_balance$`%`[3], hc_average_balance$`%`[3])
+cluster_4 <- c(hc_complete_balance$`%`[4], hc_ward_balance$`%`[4], hc_average_balance$`%`[4])
+
+balance_summary <- data.frame(
+  linkages,
+  cluster_1,
+  cluster_2,
+  cluster_3,
+  cluster_4
+)
+
+balance_summary
+
+```
+
+can include this summary in the report to talk about poor performance of the model
+
+
+```{r}
+library(RColorBrewer)
+
+
+ward_dend <- as.dendrogram(hc_ward)
+n_leaves <- length(labels(ward_dend))
+n_leaves
+
+```
+
+
+```{r}
+
+n_samples <- 200
+random_positions <- sample(1:n_leaves, n_samples)
+random_positions
+```
+```{r}
+
+pruned_ward_dend <- prune(ward_dend, -random_positions)
+
+
+pruned_ward_dend <- color_branches(pruned_ward_dend, k = 4)
+
+
+leaf_labels <- labels(pruned_ward_dend)
+
+leaf_labels
+
+```
+
+
+```{r}
+# Convert to numeric to get original row indices
+leaf_indices <- as.numeric(leaf_labels)
+# Get original class labels for these indices
+class_labels <- data_labels$label[leaf_indices]
+
+# Set up color palette
+class_colors <- brewer.pal(4, "Set1")
+names(class_colors) <- unique(data_labels$label)
+
+# Color labels by their original class
+pruned_ward_dend <- set(pruned_ward_dend, "labels_col", class_colors[class_labels])
+# Make labels smaller for readability
+pruned_ward_dend <- set(pruned_ward_dend, "labels_cex", 0.6)
+
+# Plot the dendrogram
+par(mar = c(5, 5, 5, 12)) # Increase right margin for legend
+plot(pruned_ward_dend, 
+     main = "Hierarchical Clustering - Ward Linkage",
+     sub = paste0(n_samples, " randomly sampled observations"),
+     horiz = TRUE)
+
+# Add rectangles around clusters
+rect.dendrogram(pruned_ward_dend, k = 4, border = "gray", lty = 2)
+
+# Add legend
+legend("topright", 
+       legend = unique(data_labels$label),
+       fill = class_colors,
+       title = "Original Classes",
+       inset = c(-0.15, 0),
+       xpd = TRUE)
+
+
+
+
+
+

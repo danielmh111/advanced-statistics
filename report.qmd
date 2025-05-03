@@ -77,6 +77,7 @@ library(ggpubr)
 library(psych)
 library(gridExtra)
 library(patchwork)
+library(RColorBrewer)
 ```
 
 # Introduction
@@ -1475,7 +1476,7 @@ rf_tuned_byClass_stats_table
 
 ```
 
-The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that  .
+The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that from the feature importance of each model that a few features were dominating the decisions made by the model - this will inform the approach to feature selection and dimensionality reduction when testing other learning approaches.
 
 ### SVM
 
@@ -1838,7 +1839,129 @@ combined_plot <- p1 / p2 / p3 +
 combined_plot
 ```
 
-ahc was good not great.
+```{r hc-models}
+#| cache: true
+
+dist_matrix <- dist(data_features, method = "euclidean")
+
+
+hc_complete <- hclust(dist_matrix, method = "complete")
+hc_average <- hclust(dist_matrix, method = "average")
+hc_single <- hclust(dist_matrix, method = "single")
+hc_ward <- hclust(dist_matrix, method = "ward.D2")
+
+
+hc_complete_clusters <- cutree(hc_complete, k = 4)
+hc_complete_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_complete_clusters
+  )
+hc_complete_balance <- hc_complete_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_ward_clusters <- cutree(hc_ward, k = 4)
+hc_ward_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_ward_clusters
+  )
+hc_ward_balance <- hc_ward_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_average_clusters <- cutree(hc_average, k = 4)
+hc_average_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_average_clusters
+  )
+hc_average_balance <- hc_average_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+
+linkages <- c("Complete", "Ward", "Average")
+hc_complete_balance$`%`[4]
+cluster_1 <- c(hc_complete_balance$`%`[1], hc_ward_balance$`%`[1], hc_average_balance$`%`[1])
+cluster_2 <- c(hc_complete_balance$`%`[2], hc_ward_balance$`%`[2], hc_average_balance$`%`[2])
+cluster_3 <- c(hc_complete_balance$`%`[3], hc_ward_balance$`%`[3], hc_average_balance$`%`[3])
+cluster_4 <- c(hc_complete_balance$`%`[4], hc_ward_balance$`%`[4], hc_average_balance$`%`[4])
+
+balance_summary <- data.frame(
+  linkages,
+  cluster_1,
+  cluster_2,
+  cluster_3,
+  cluster_4
+)
+
+balance_summary_table = balance_summary %>%
+  kable(
+    caption = "Hierarchical Clustering - proportion of data in each cluster \\label{tab:hc_cluster_balance}", 
+    digits = 2, 
+    align = "lcccc",
+    longtable = FALSE,
+    format = "latex",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Percent of Observations" = 4)
+  )
+
+balance_summary_table
+
+```
+
+```{r ward-dend-fig, fig.cap="Dendrogram of Hierarchical Clustering using Ward Linkage", fig.height=8, out.width="100%", fig.margin=TRUE}
+#| label: fig-dend
+#| cache: true
+
+ward_dend <- as.dendrogram(hc_ward)
+n_leaves <- length(labels(ward_dend))
+n_samples <- n_leaves - 200 # after pruning, 200 leaves remain. should give ~50 in each class
+random_positions <- sample(1:n_leaves, n_samples)
+
+pruned_ward_dend <- prune(ward_dend, random_positions)
+
+
+pruned_ward_dend <- color_branches(pruned_ward_dend, k = 4)
+
+
+leaf_labels <- labels(pruned_ward_dend)
+leaf_indices <- as.numeric(leaf_labels)
+
+
+class_labels <- data_labels$label[leaf_indices]
+
+
+class_colors <- brewer.pal(4, "Set1")
+names(class_colors) <- unique(data_labels$label)
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "labels", rep("", length(leaf_labels)))
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_pch", 19) 
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_col", class_colors[class_labels])
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 1.75) 
+
+plot(pruned_ward_dend, 
+     main = "Hierarchical Clustering - Ward Linkage",
+     sub = "200 randomly sampled observations",
+     horiz = F,
+     axes = T
+)
+
+
+```
+Agglomerative hierarchical clustering was found to be an inappropriate method for this data set. After testing several linkage methods, they were all found to produce unbalanced clusters, whereas we know that the data is evenly divided into four almost equal classes. The ward linkage produced the most balanced clusters, but even there one cluster contained almost 40% of all observations (\autoref{tab:hc_cluster_balance}. From its dendrogram, \autoref{fig-dend}, each cluster can be seen to contain a mixture of original class labels. This means that as well as producing unbalanced classes, there were likely to be misclassifications within each cluster as well. Due to its poor performance to this point, hierarchical clustering was not pursued further.
 
 ### Gaussian Mixed Model Clustering
 
@@ -2479,7 +2602,10 @@ Class D was harder for every model to correctly predict. In the context of biolo
 Another explaination is that D could be a transition state between other classes. This is not supported by the visualization of the data where class D seems to form a differently shaped sigmoid to the other classes, and overlap all three. Its still possible that D represents an immature state that will later develop into one of the other three.
 The uncertainy of the predictions of this class by an array of models with such different underlying principles suggests that the difficulty is not a limitation of any algorithm, and it is likely that the features of the data do not have the predictive power necessary for efficient seperation of class D. Better performing models could be developed if data was collected with additional variables.
 
-At the outset of the project, it was reasonable to assume that the supervised learning would out-perform the unsupervised learning models. The gaussian mixture model achieving the highest performance metrics speaks to the high amounts of noise present within each cluster and the dataset as a whole, as performing well on these kinds of data is a hallmark of the gmm algorithm.
+At the outset of the project, it was reasonable to assume that the supervised learning would out-perform the unsupervised learning models. This held for the hierarchical clustering approach, which performed particularly poorly. This appears to have been a poor model for our data, revealing that the data likely does not contain a hierarchical structure. 
+Further research could attempt to improve the performance using distance metrics other than euclidian, however the promising results achieved using other methods leads to this option not being recommended. The second unsupervised method has very different underlying principles, and performed much better.
+
+The gaussian mixture model achieving the highest performance metrics speaks to the high amounts of noise present within each cluster and the dataset as a whole, as performing well on these kinds of data is a hallmark of the gmm algorithm.
 
 Factor analysis had some success as the gmm model was able to retain its high accuracy and increase the F1 score of class D with a considerable reduction in the dimensionality of the data, suggesting the existance of underlying biological mechanisms or environmental factors that lead to the observed features arrising. Although well performing statistical models were trained using the features and the factor analysis approach, better results mights be possible using the underlying factors themselves if it is possible to measure them.
 
