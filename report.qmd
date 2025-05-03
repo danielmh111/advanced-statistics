@@ -35,6 +35,7 @@ include-in-header:
   text: |
     \usepackage{ltablex}
     \usepackage{titling}
+    \usepackage{float}
     \pretitle{\begin{center}\LARGE\bfseries}
     \posttitle{\end{center}}
     \preauthor{\begin{center}\large}
@@ -47,10 +48,7 @@ knitr::opts_chunk$set(
   echo = FALSE,        
   warning = FALSE,     
   message = FALSE,
-  fig.align = "center",
-  fig.width = 6,
-  fig.height = 4,
-  out.width = "80%"
+  fig.align = "center"
 )
 ```
 ```{r load-libraries}
@@ -77,6 +75,8 @@ library(mclust)
 library(GGally)  
 library(ggpubr) 
 library(psych)
+library(gridExtra)
+library(patchwork)
 ```
 
 # Introduction
@@ -1475,7 +1475,7 @@ rf_tuned_byClass_stats_table
 
 ```
 
-The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that .
+The random forest performed well without any configuration. No meaningful improvement was possible through feature selection or tuning. We learned that  .
 
 ### SVM
 
@@ -1747,9 +1747,20 @@ svm_final_byClass_stats_table
 
 
 ```
-```{r plt-x7-vs-x8-misclassifications, fig.cap="**Misclassifications - X7 by X8**"}
+\clearpage
+```{r plt-x7-vs-x8-misclassifications, fig.cap="**Classifications and Misclassifications - X7 by X8**", fig.margin=TRUE, out.width="100%", fig.height=6, fig.pos="H"}
 #| cache: true
-ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Predicted, shape = Actual)) +
+
+svm_prediction_df <- data.frame(
+  X7 = test_data$X7,
+  X8 = test_data$X8,
+  Actual = test_data$label,
+  Predicted = svm_final_predictions,
+  Correct = test_data$label == svm_final_predictions
+)
+
+
+svm_classification_78_plot <- ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Predicted, shape = Actual)) +
   geom_point(size = 3, alpha = 0.7) +
   labs(title = "SVM Classification: X7 vs X8",
        x = "X7", y = "X8",
@@ -1758,7 +1769,7 @@ ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Predicted, shape = Actual)
   theme_minimal()
 
 
-ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) +
+svm_misclassification_78_plot <- ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) +
   geom_point(size = 3, alpha = 0.7) +
   scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
   labs(title = "SVM Misclassifications: X7 vs X8",
@@ -1766,6 +1777,12 @@ ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) 
        color = "Correctly Classified",
        shape = "Actual Class") +
   theme_minimal()
+
+svm_x78_combined_plot <- svm_classification_78_plot / svm_misclassification_78_plot + 
+  plot_layout(heights = c(1, 1))
+
+svm_x78_combined_plot
+
 ```
 
 
@@ -1774,24 +1791,51 @@ svm was good but not as good as random forest. lots of tuning. feature selection
 ## Unsupervised Learning Results
 
 ### Agglomerative Hierarchical Clustering
-
-```{r silhouette-plot, fig.cap="**Silhouette Plot**"}
+```{r optimal-cluster-stats}
 #| cache: true
 
-fviz_nbclust(data_features, hcut, method = "silhouette", k.max = 10) +
-  labs(title = "Optimal Number of Clusters - Silhouette Method")
+sil_plot <- fviz_nbclust(data_features, hcut, method = "silhouette", k.max = 10) +
+  labs(title = "fig 11.a - Silhouette Method")
+
+gap_plot <- fviz_nbclust(data_features, hcut, method = "gap_stat", k.max = 10, nboot = 50) +
+  labs(title = "fig 11.b - Gap Statistic")
+
+elbow_plot <- fviz_nbclust(data_features, hcut, method = "wss", k.max = 10) +
+  labs(title = "fig 11.c - Elbow Method")
 ```
-```{r gap-stat-plot, fig.cap="**Gap Statistic Plot**"}
+```{r optimal-cluster-plots, fig.cap="**Optimal clusters using silhouette, gap, and elbow methods**", fig.height=8, out.width="100%", fig.margin=TRUE}
+
 #| cache: true
 
-fviz_nbclust(data_features, hcut, method = "gap_stat", k.max = 10, nboot = 50) +
-  labs(title = "Optimal Number of Clusters - Gap Statistic")
-```
-```{r elbow-plot, fig.cap="**Elbow Graph**"}
-#| cache: true
+p1 <- sil_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10),
+    axis.title.x = element_blank(),  # Remove x-axis title from first two plots
+  )
 
-fviz_nbclust(data_features, hcut, method = "wss", k.max = 10) +
-  labs(title = "Optimal Number of Clusters - Elbow Method")
+p2 <- gap_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10),
+    axis.title.x = element_blank()
+  )
+
+p3 <- elbow_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10)
+  )
+
+
+combined_plot <- p1 / p2 / p3 + 
+  plot_layout(heights = c(1, 1, 1)) +
+  plot_annotation(
+    title = "Optimal Number of Clusters",
+    theme = theme(plot.title = element_text(size = 12))
+  )
+
+combined_plot
 ```
 
 ahc was good not great.
@@ -1826,7 +1870,7 @@ In heirarchical clustering, we didn't see clear confirmation of four groups from
 
 The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts[@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are elipsoids of equal orientation, but varying volume[@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principle component)
 
-```{r clustering-viz}
+```{r clustering-viz, fig.cap="GMM Cluster Plot", out.width="100%", fig.margin=TRUE}
 #| cache: true
 fviz_mclust(fitM, "classification", geom = "point", pointsize = 1.5, palette = "jco")
 ```
