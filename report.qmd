@@ -28,7 +28,7 @@ format:
         \usepackage{etoolbox}
         \pretocmd{\tableofcontents}{\newpage}{}{}
         \usepackage{caption} 
-abstract: "**Abstract:** Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principles gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three."
+abstract: "**Abstract:** Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principals gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three."
 bibliography: references.bib
 editor: visual
 include-in-header:
@@ -83,17 +83,17 @@ library(RColorBrewer)
 
 # Introduction
 
-This report takes a moderately sized biological dataset containing 3000 observations, where each observation having 20 numeric varables and one catagorical label. These data are explored thoroughly before being used to train and test an array of statistical modelling techniques.
+This report takes a moderately sized biological dataset containing 3000 observations, where each observation having 20 numeric varables and one categorical label. These data are explored thoroughly before being used to train and test an array of statistical modelling techniques.
 
-This is an interesting project because the origin and meaning of the variables in the data are completely unknown - an unusual scenario in the data science field, where usually it is the domain knowledge and problem context that inform the selection and implementation of statistical methods. Here, with this relationship reversed, algorithms have been chosen so that the evaluation of their performance can attempt to uncoverthe underlying biological significance of the variables.
+This is an interesting project because the origin and meaning of the variables in the data are completely unknown - an unusual scenario in the data science field, where usually it is the domain knowledge and problem context that inform the selection and implementation of statistical methods. Here, with this relationship reversed, algorithms have been chosen so that the evaluation of their performance can attempt to uncover the underlying biological significance of the variables.
 
-Achieving meaningful results in this task shows the importance of supervised and unsupervised learning to this field, where classification algorithms can build valuable models that have high impact on society such as disease diagnosis models, and unsupervised learning techniques can create breakthoughs in identifying clusters of data that lead to new discoveries and classifications [@caiESPRITForestParallelClustering2017].
+Achieving meaningful results in this task shows the importance of supervised and unsupervised learning to this field, where classification algorithms can build valuable models that have high impact on society such as disease diagnosis models (@altafPragmaticComparisonSupervised2021), and unsupervised learning techniques can create breakthoughs in identifying clusters of data that lead to new discoveries and classifications [@caiESPRITForestParallelClustering2017].
 
 # Methods
 
 ## Data Description
 
-Each of the 3000 observations has 20 numeric features and a label placing it in one of four catagorical classes. Though exploritory data analysis, two groups of correlated features were identified. Outliers were identified and removed using z score method. One feature transformed using logarithm to create a more normal distribution to improve the performance of models. All features were scaled and centered. After the preprocessing of the data, 2776 usable observations remained [@PDFPowerOutliers].
+Each of the 3000 observations has 20 numeric features and a label placing it in one of four categorical classes. Though exploritory data analysis, two groups of correlated features were identified. Outliers were identified and removed using z score method. One feature transformed using logarithm to create a more normal distribution to improve the performance of models. All features were scaled and centered. After the preprocessing of the data, 2776 usable observations remained [@PDFPowerOutliers].
 
 Bootstrap sampling was used to create a larger dataset so that the performance of the models could be compared between the original and bootstrapped data.
 
@@ -110,7 +110,7 @@ data <- read_csv("Data(2).csv")
 ## Exploratory Data Analysis Approach
 
 
-```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with catagorical labels*", out.width="100%", fig.margin=TRUE}
+```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with categorical labels*", out.width="100%", fig.margin=TRUE}
 #| label: fig-corrmap
 #| cache: true
 
@@ -149,13 +149,13 @@ ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
   coord_fixed()
 ```
 
-Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20 (\autoref{fig-corrmap}). Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicolinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms.
+Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20 (\autoref{fig-corrmap}). Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicollinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms.
 
 The difference between these two group is that while X7, X8, and X9 are three features with some of the strongest correlations with the label values, all of X17 to X20 are features without significant correlations. This would lead us to believe that X17 - X20 have low predictive power in classification that aim to predict the class label and so removing them entirely would be a justifyable approach.
 
 Among the other columns, we see that there are definitly some columns with stronger correlations than others.
 
-To produce the correlation matrix, the four catagorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, \autoref{fig-corrmap} shows us X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
+To produce the correlation matrix, the four categorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, \autoref{fig-corrmap} shows us X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
 
 ```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*", out.width="100%"}
 #| label: fig-hists
@@ -267,7 +267,7 @@ Across the entire dataset, the distribution of labels is uniform, with roughly o
 
 When the distribution of each feature is observed by class label some features have significantly different characteristics for each class. In \autoref{fig-boxplots}, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives insight into which features will be important for building effective models - it is expected that features such as X7 with very different stats per class will be useful at creating decision boundaries or defining distributions for model-based clustering.
 
-```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of catagorical classes*", out.width="100%"}
+```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of categorical classes*", out.width="100%"}
 #| label: fig-pca
 #| cache: true
 
@@ -291,11 +291,11 @@ ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
     
 ```
 
-It is important to learn about the structure of the underlying data in order to understand the chances of sucess with modelling methods. Using Principle Componant Analysis captures most of the information in the system in one scatter plot (\autoref{fig-pca}). This shows that there is some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principle component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
+It is important to learn about the structure of the underlying data in order to understand the chances of sucess with modelling methods. Using principal Componant Analysis captures most of the information in the system in one scatter plot (\autoref{fig-pca}). This shows that there is some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form elipsoidal groups that are roughly equal in size and orientation, and offset along the second principal component. The fourth class (D) forms a larger elipsoid that overlaps significantly with the other three.
 
 The seperation of the first three classes suggests there is information in the features that allow statistical models to decern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
 
-The fact that the three classes that are distinct are displaced along the second principle componant and not the first principle component means that it is the dimensions with less variation that distinguish them. It would be easier to seperate the groups with predictive models if they were offset along the first principle conmponent.
+The fact that the three classes that are distinct are displaced along the second principal componant and not the first principal component means that it is the dimensions with less variation that distinguish them. It would be easier to seperate the groups with predictive models if they were offset along the first principal conmponent.
 
 To learn more about the underlying structure of the dataset, the clustering tendency can be examined by calculating the Hopkins statistic, where a score close to 1 indicates strong clustering tenency, a score of 0.5 indicates random distribution of occurences, and 0 a uniform distribution [@wrightWillRealHopkins2022].
 
@@ -407,14 +407,15 @@ There are variations such as weighting and regularization [@jamesIntroductionSta
 
 ### Random forest, feature selection, tuning of mtry.
 Random Forest was chosen due to its resilience. One of the more robust option, it is a good choice for handling the data without extra processing. Several characteristics of the data have been identified that may cause othe models such as logistic regression and SVM to struggle: 
-  - Correlated of features 
+
+  - Correlation of features 
   - Features that appeared to have low linear correlations with the label values (from heatmap in eda) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable 
   - Features that aren't perfectly normally distributed, such as the bimodal peak in X7
 
 Random Forest is a robust algorithm with few underlying assumptions that will handle these considerations well [@jamesIntroductionStatisticalLearning2023 pp. 346-347]. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may peform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modelling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for descerning between class A and D, and then refine the selection in further nodes.
 
 ### SVM, feature selection, tuning kernel selection, gamma, cost parameters.
-SVM is a powerful and popular algorith. SVM has options for different kernals that can be tuned, and this is a promising approach to solving the challenges of seperating class A from class D that is evedent from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 382]. It might be the case that A and D aren't linearly seperable, but a non-linear kernal will have success.
+SVM is a powerful and popular algorith. SVM has options for different kernels that can be tuned, and this is a promising approach to solving the challenges of Separating class A from class D that is evedent from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 382]. It might be the case that A and D aren't linearly seperable, but a non-linear kernel will have success.
 
 ## Unsupervised Learning Methods
 
@@ -423,26 +424,26 @@ Agglomerative hierarchical clustering was chosen because it is interesting to ex
 
 Biological data is often naturally hierarchical, for example animals can be classified by deviding them into first kingdoms, then families of species, and finally species and sub-species [@caiESPRITForestParallelClustering2017].
 
-Although the exact meaning of each feature in the data isn't known, it is biological in origin (perhaps gene expressions or environmental factors). This means that there may be a heirarchy of classes in our data.
+Although the exact meaning of each feature in the data isn't known, it is biological in origin (perhaps gene expressions or environmental factors). This means that there may be a hierarchy of classes in our data.
 
 Using this method without specifying that there are four values for label might reveal that some of the labels have a strong tendency to form sub classes, or that there is little structure in the data to justify asserting there are four classes. These would both be interesting finds.
 
 It is also a model that handles the feature correlation well, which allows us to keep in all the collumns that correlate like X7, X8, and X9.
 
 ### Gaussian mixture model clustering, model seclection, regularization, dimensionality reduction using factor analysis.
-So far while working with this data set, it has been challenging to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principle componants of the data.
+So far while working with this data set, it has been challenging to seperate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principal componants of the data.
 
-Lots of clustering methods struggle with seperating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. A Gaussian Mixture Model (gmm) approach was chosen - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions[@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like K-means when there aren't clear boundaries between the clusters such as we see with class D.
+Lots of clustering methods struggle with Separating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. A Gaussian Mixture Model (gmm) approach was chosen - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions [@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabalistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like k-means when there aren't clear boundaries between the clusters such as we see with class D.
 
-Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters[@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce elipsoidal clusters. It also operates on very different fundemental principles to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not hierarchical in nature.
+Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters [@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce elipsoidal clusters. It also operates on very different fundemental principals to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not hierarchical in nature.
 
 # Results
 
-In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evalutation can be found in notebooks [@Hill_Advanced-Statistics]. 
+In this section the results of various models are presented through performance metrics such as accuracy, recall, precicion and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evalutation can be found in notebooks [@hillAdvancedstatistics2025]. 
 
 ## Supervised Learning Results
 
-### Logistic Regression
+### Logistic Regression {.avoid-page-break}
 
 ```{r simple-logistic-regression-confusion-matrix}
 #| cache: true
@@ -924,7 +925,7 @@ ggplot(results_df %>% mutate(Decay = as.numeric(Decay)) %>% pivot_longer(cols = 
                                   names_to = "Metric", values_to = "Value")) +
   geom_line(aes(x = Decay, y = Value, color = Metric)) +
   geom_point(aes(x = Decay, y = Value, color = Metric)) +
-  scale_x_log10() +  # Log scale for better visualization of decay range
+  scale_x_log10() +  # Log scale for better visualisation of decay range
   labs(title = "Effect of Regularization on Logistic Regression Performance",
        x = "Decay Parameter (log scale)",
        y = "Performance Metric Value") +
@@ -1545,7 +1546,7 @@ for (i in 1:length(models)) {
 
 svm_kernel_summary_table <- results_df %>%
   kable(
-    caption = "SVM Performance with Different Kernels \\label{tab:svm-kernal-accuracy}",
+    caption = "SVM Performance with Different Kernels \\label{tab:svm-kernel-accuracy}",
     col.names = c("Kernel", "Accuracy", "Kappa",
                   "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
     digits = 4,
@@ -1618,6 +1619,7 @@ svm_final_model <- svm(
   cost = optimal_params$C,
   scale = FALSE
 )
+
 
 svm_final_predictions <- predict(svm_final_model, test_data)
 svm_final_conf_matrix <- confusionMatrix(svm_final_predictions, test_data$label)
@@ -1742,7 +1744,7 @@ svm_x78_combined_plot
 
 ### SVM {.page-break-avoid}
 
-SVM was tuned to find the best performing kernel was radial (\autoref{tab:svm-kernal-accuracy}), and optimal hyperparameters were found. \autoref{fig-svm-hyperparameters} visualizes the tuning approach, and a progressively finer mesh of parameter values was used to find the maximum accuracy. 
+SVM was tuned to find the best performing kernel was radial (\autoref{tab:svm-kernel-accuracy}), and optimal hyperparameters were found. \autoref{fig-svm-hyperparameters} visualizes the tuning approach, and a progressively finer mesh of parameter values was used to find the maximum accuracy. 
 
 SVM performed well with overall accuracy on par with random forest (\autoref{tab:svm_tuned_stats}, \autoref{tab:rf-tuned-stats}), but SVM actually had a higher F1 score on the challenging class D, while random forests' high overall accuracy was formed in part by excelling at classifying class B (\autoref{tab:svm_tuned_class_stats}, \autoref{tab:rf-tuned-classStats}). This suggests that between the two, SVM could be the better choice for a lot of use cases.
 
@@ -1751,6 +1753,9 @@ The tuning of SVM was extensive, and it is unlikely that performance can be impr
 ## Unsupervised Learning Results
 
 ### Agglomerative Hierarchical Clustering
+
+Since agglomerative hierarchical clustering has no specified number of clusters, the first step was to employ methods to try and determine the optimal number of clusters. \autoref{fig-optimal-cluster-plots} shows the results of three different methods, and shows that there is no consensus between them on optimal number of clusters. In particular, \autoref{fig-optimal-cluster-plots}.c shows an elbow plot with no clear angle for choosing an optimal number of clusters. This is a first sign that this method of clustering may not be appropriate for our data. With this in mind, the technique will be evaluated by cutting the model's tree at four clusters, since we know this is the true number of labels in the data.
+
 ```{r optimal-cluster-stats}
 #| cache: true
 
@@ -1764,7 +1769,7 @@ elbow_plot <- fviz_nbclust(data_features, hcut, method = "wss", k.max = 10) +
   labs(title = "fig 11.c - Elbow Method")
 ```
 ```{r optimal-cluster-plots, fig.cap="**Optimal clusters using silhouette, gap, and elbow methods**", fig.height=8, out.width="100%", fig.margin=TRUE}
-
+#| label: fig-optimal-cluster-plots
 #| cache: true
 
 p1 <- sil_plot + 
@@ -1952,11 +1957,11 @@ invisible({
 
 plot(BIC)
 ```
-VVE was found to be the best performing model. Promisingly, the plot peaked at four clusters. Since it is known that there actually are four categorical classes in the original data, this shows that the model is learning from the distributions of all four labels. Since we saw such overlap in classes and many misclassifications in class D previously, it would have been unsuprising to see three as the optimum number of classes,suggesting that data was better described by three categories than four. 
+A Baysian Information Criteria (BIC) plot was created to find the best model type and optimal number of clusters. VVE was found to be the best performing model. Promisingly, the plot scored well at four clusters. Since it is known that there actually are four categorical classes in the original data, this shows that the model is learning from the distributions of all four labels. Since we saw such overlap in classes and many misclassifications in class D previously, it would have been unsuprising to see three as the optimum number of classes,suggesting that data was better described by three categories than four. 
 
 In hierarchical clustering, we didn't see clear confirmation of four groups from the graphs using either the elbow method, gap method, or silloette method.
 
-The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts[@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are elipsoids of equal orientation, but varying volume[@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principle component)
+The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts [@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are elipsoids of equal orientation, but varying volume [@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size elipses one above the other, with a fourth, larger elipses overlaying them, with the major axis of all four being roughly horizontal (along the first principal component)
 
 ```{r clustering-viz, fig.cap="GMM Cluster Plot", out.width="100%", fig.margin=TRUE}
 #| cache: true
@@ -2096,7 +2101,7 @@ gmm_byClass_stats_table
 
 ```
 
-Gaussian mixed model clustering performed very well (\autoref{tab:gmm-cm}, \autoref{tab:gmm-stats}). It immediately had overall accuracy comparible with random forest and svm, and performed notebly better than other models at seperating the fourth class successfully, with an F1 score of 0.8 (\autoref{tab:gmm-class-stats}). 
+Gaussian mixed model clustering performed very well (\autoref{tab:gmm-cm}, \autoref{tab:gmm-stats}). It immediately had overall accuracy comparible with random forest and svm, and performed notebly better than other models at Separating the fourth class successfully, with an F1 score of 0.8 (\autoref{tab:gmm-class-stats}). 
 
 Attempts were made to further tune the model through regularization:
 
@@ -2431,6 +2436,7 @@ In unsupervised learning, the bootstrapping method leads to poor performance fro
 # bootstrap the data, then train all the models and predict, then create one table with the results of all the models
 
 
+
 data <- read_csv("data_clean.csv")
 data$label <- as.factor(data$label)
 
@@ -2563,13 +2569,13 @@ comparison_table
 The relative performance of different learning models can give some insight to the underlying structure of the data.
 If random forest and agglomerative hierarchical clustering performed significantly better than the other models, this would be evidence that the data was hierarchical in nature. If logistic regression performed as well as any of the other models, it would indicate that the data was extremely structured and easy to model, with strong linear relationships between the predictive features and the labels. The results found that random forest performed best followed by the radial kernel SVM. Both of these algorithms are better at modelling with non-linear relationships. This suggests that the the relationship between the features and the label exhibits some non-linearity. 
 
-There are also lessons learned from the challenge of seperating class D which arrose in every model that was implemented.
+There are also lessons learned from the challenge of Separating class D which arose in every model that was implemented.
 Class D was harder for every model to correctly predict. In the context of biological data there are a several explainations of why this would happen, including that D is a super-class in a hierarchy where the other three are sub classes. This appears unlikely due to the underperformance of agglomerative hierarchical clustering. 
-Another explaination is that D could be a transition state between other classes. This is not supported by the visualization of the data where class D seems to form a differently shaped sigmoid to the other classes, and overlap all three. Its still possible that D represents an immature state that will later develop into one of the other three.
-The uncertainy of the predictions of this class by an array of models with such different underlying principles suggests that the difficulty is not a limitation of any algorithm, and it is likely that the features of the data do not have the predictive power necessary for efficient seperation of class D. Better performing models could be developed if data was collected with additional variables.
+Another explaination is that D could be a transition state between other classes. This is not supported by the visualisation of the data where class D seems to form a differently shaped sigmoid to the other classes, and overlap all three. Its still possible that D represents an immature state that will later develop into one of the other three.
+The uncertainy of the predictions of this class by an array of models with such different underlying principals suggests that the difficulty is not a limitation of any algorithm, and it is likely that the features of the data do not have the predictive power necessary for efficient seperation of class D. Better performing models could be developed if data was collected with additional variables.
 
 At the outset of the project, it was reasonable to assume that the supervised learning would out-perform the unsupervised learning models. This held for the hierarchical clustering approach, which performed particularly poorly. This appears to have been a poor model for our data, revealing that the data likely does not contain a hierarchical structure. 
-Further research could attempt to improve the performance using distance metrics other than euclidian, however the promising results achieved using other methods leads to this option not being recommended. The second unsupervised method has very different underlying principles, and performed much better.
+Further research could attempt to improve the performance using distance metrics other than euclidian, however the promising results achieved using other methods leads to this option not being recommended. The second unsupervised method has very different underlying principals, and performed much better.
 
 The gaussian mixture model achieving the highest performance metrics speaks to the high amounts of noise present within each cluster and the dataset as a whole, as performing well on these kinds of data is a hallmark of the gmm algorithm.
 
