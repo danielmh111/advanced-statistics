@@ -2355,7 +2355,7 @@ gmm_fa_byClass_stats_table <- gmm_fa_byClass_stats %>%
   rownames_to_column("Statistic") %>% # turn the statistics into a column
   kable(
     digits = 4,
-    # caption = "Gaussian Mixture Model using Factors - Statistics by Class \\{ggm-fa-class-stats}",
+    caption = "Gaussian Mixture Model using Factors - Statistics by Class \\label{ggm-fa-class-stats}",
     longtable = FALSE,
     format = "latex",
     align = "lccccc",

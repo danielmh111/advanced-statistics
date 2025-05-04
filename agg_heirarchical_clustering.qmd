@@ -365,13 +365,13 @@ n_leaves
 
 ```{r}
 
-n_samples <- 200
+n_samples <- n_leaves - 200 # after pruning, 200 leaves remain. should give ~50 in each class
 random_positions <- sample(1:n_leaves, n_samples)
 random_positions
 ```
 ```{r}
 
-pruned_ward_dend <- prune(ward_dend, -random_positions)
+pruned_ward_dend <- prune(ward_dend, random_positions)
 
 
 pruned_ward_dend <- color_branches(pruned_ward_dend, k = 4)
@@ -385,40 +385,89 @@ leaf_labels
 
 
 ```{r}
-# Convert to numeric to get original row indices
+
 leaf_indices <- as.numeric(leaf_labels)
-# Get original class labels for these indices
+leaf_indices
+
+```
+
+```{r}
 class_labels <- data_labels$label[leaf_indices]
 
-# Set up color palette
+
 class_colors <- brewer.pal(4, "Set1")
 names(class_colors) <- unique(data_labels$label)
 
-# Color labels by their original class
-pruned_ward_dend <- set(pruned_ward_dend, "labels_col", class_colors[class_labels])
-# Make labels smaller for readability
-pruned_ward_dend <- set(pruned_ward_dend, "labels_cex", 0.6)
 
-# Plot the dendrogram
-par(mar = c(5, 5, 5, 12)) # Increase right margin for legend
+pruned_ward_dend <- set(pruned_ward_dend, "labels_col", class_colors[class_labels])
+
 plot(pruned_ward_dend, 
      main = "Hierarchical Clustering - Ward Linkage",
-     sub = paste0(n_samples, " randomly sampled observations"),
+     sub = paste0("200 randomly sampled observations"),
      horiz = TRUE)
-
-# Add rectangles around clusters
-rect.dendrogram(pruned_ward_dend, k = 4, border = "gray", lty = 2)
-
-# Add legend
-legend("topright", 
-       legend = unique(data_labels$label),
-       fill = class_colors,
-       title = "Original Classes",
-       inset = c(-0.15, 0),
-       xpd = TRUE)
+```
 
 
+```{r}
+class_labels <- data_labels$label[leaf_indices]
+
+
+class_colors <- brewer.pal(4, "Set1")
+names(class_colors) <- unique(data_labels$label)
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "labels", rep("", length(leaf_labels)))
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_col", class_colors[class_labels])
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 1)
+
+plot(pruned_ward_dend, 
+     main = "Hierarchical Clustering - Ward Linkage",
+     sub = "200 randomly sampled observations",
+     horiz = TRUE,
+     axes = T
+)
+
+rect.dendrogram(pruned_ward_dend, k = 4, border = "gray")
+
+
+# legend("topright", 
+#        legend = unique(data_labels$label),
+#        fill = class_colors,
+#        title = "Original Classes",
+#        inset = c(-0.15, 0),
+#        xpd = TRUE)
+
+
+```
+
+```{r fig.height=12}
+class_labels <- data_labels$label[leaf_indices]
+
+
+class_colors <- brewer.pal(4, "Set1")
+names(class_colors) <- unique(data_labels$label)
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "labels", rep("", length(leaf_labels)))
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_col", class_colors[class_labels])
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 2.25)
+
+plot(pruned_ward_dend, 
+     main = "Hierarchical Clustering - Ward Linkage",
+     sub = "200 randomly sampled observations",
+     horiz = TRUE,
+     axes = T
+)
 
 
 
+# legend("topright", 
+#        legend = unique(data_labels$label),
+#        fill = class_colors,
+#        title = "Original Classes",
+#        inset = c(-0.15, 0),
+#        xpd = TRUE)
+
+
+```
 
