@@ -1,0 +1,58 @@
+---
+title: "bootstrap"
+author: "Daniel Hill"
+format: pdf
+editor: visual
+---
+
+## Bootstrap sampline
+
+in this document we are going to perform bootstrap sampling on the clean data set and create a new csv file containing the bootstrapped data that we can use in further tasks. I would rather create on file with bootstrap data instead of looping through the vectors and calculating the statistics for each one every time like in the simulation.qmd. I think the result should be the same, but code should be cleaner to write this way.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = TRUE,
+  fig.width = 6,      
+  fig.height = 4,     
+  out.width = "80%",  
+  fig.align = "center"
+)
+```
+
+
+```{r}
+library(tidyverse)
+set.seed(456)
+```
+
+```{r}
+
+data <- read_csv("data_clean.csv")
+
+bootstrap_data <- data %>% sample_n(size=10000, replace=TRUE)
+
+original_dist <- data %>% count(label)
+bootstrap_dist <- bootstrap_data %>% count(label)
+
+
+original_dist
+bootstrap_dist
+```
+
+```{r}
+original_dist <- original_dist %>% mutate(percentage = n / nrow(data) )
+bootstrap_dist <- bootstrap_dist %>% mutate(percentage = n / nrow(bootstrap_data) )
+
+original_dist
+bootstrap_dist 
+```
+looks good to me
+
+
+```{r}
+write_csv(bootstrap_data, "bootstrap_data.csv")
+```
+
+

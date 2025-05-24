@@ -1,0 +1,2731 @@
+---
+title: "Advanced Statistics: Application of supervised and unsupervised methods to biological data"
+author: "Daniel Hill (Student ID: 24057087)"
+date: "27 April 2025"
+format: 
+  pdf:
+    documentclass: scrartcl
+    classoption: twocolumn
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    toc-title: Contents
+    lof: true
+    lot: true
+    geometry:
+      - paper=a4paper    
+      - top=15mm         
+      - bottom=24mm      
+      - left=12mm        
+      - right=12mm       
+      - columnsep=7mm    
+      - heightrounded
+    dev: pdf
+    df-print: kable
+    natbiboptions: "authoryear,round"
+    include-in-header:
+      text: |
+        \usepackage{etoolbox}
+        \pretocmd{\tableofcontents}{\newpage}{}{}
+        \usepackage{caption} 
+abstract: "**Abstract:** Biological data with twenty features and four categorical class labels is explored and analysed using advanced statistical techniques in this report. Both supervised and unsupervised methods were implemented and evaluated, and the broad selection of models includes logistic regression, support vector machine, random forest, agglomerative hierarchical clustering, and gaussian mixture modelling. Comparing the results achieved using a selection of models with different underlying principals gives insight into the nature of the data. For example, the success of model-based clustering compared to hierarchical clustering and tree-based learning suggests the lack of hierarchy among the categorical labels, and the success of factor analysis as a dimensionality reduction technique suggests the presence of underlying biological mechanisms leading to several of the features arising together. Models achieving over 90% accuracy were produced, but all models performed notably worse at separating one of the categories that overlapped the other three."
+bibliography: references.bib
+editor: visual
+include-in-header:
+  text: |
+    \usepackage{ltablex}
+    \usepackage{titling}
+    \usepackage{float}
+    \usepackage{appendix}
+    \pretitle{\begin{center}\LARGE\bfseries}
+    \posttitle{\end{center}}
+    \preauthor{\begin{center}\large}
+    \postauthor{\end{center}}
+    \predate{\begin{center}}
+    \postdate{\end{center}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        
+  warning = FALSE,     
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+```{r load-libraries}
+library(tidyverse)
+library(carat)
+library(caret)
+library(skimr)
+library(kableExtra)
+library(reshape2)
+library(viridis)
+library(hopkins)
+library(mnet)
+library(nnet)
+library(pROC)
+library(randomForest)
+library(e1071) 
+library(cluster)   
+library(factoextra)   
+library(dendextend) 
+library(circlize)
+library(fpc)            
+library(NbClust)  
+library(mclust)  
+library(GGally)  
+library(ggpubr) 
+library(psych)
+library(gridExtra)
+library(patchwork)
+library(RColorBrewer)
+```
+
+# Introduction
+
+This report takes a moderately sized biological dataset containing 3000 observations, where each observation having 20 numeric variables and one categorical label. These data are explored thoroughly before being used to train and test an array of statistical modeling techniques.
+
+This is an interesting project because the origin and meaning of the variables in the data are completely unknown - an unusual scenario in the data science field, where usually it is the domain knowledge and problem context that inform the selection and implementation of statistical methods. Here, with this relationship reversed, algorithms have been chosen so that the evaluation of their performance can attempt to uncover the underlying biological significance of the variables.
+
+Achieving meaningful results in this task shows the importance of supervised and unsupervised learning to this field, where classification algorithms can build valuable models that have high impact on society such as disease diagnosis models (@altafPragmaticComparisonSupervised2021), and unsupervised learning techniques can create breakthroughs in identifying clusters of data that lead to new discoveries and classifications [@caiESPRITForestParallelClustering2017].
+
+# Methods
+
+## Data Description
+
+Each of the 3000 observations has 20 numeric features and a label placing it in one of four categorical classes. Though exploratory data analysis, two groups of correlated features were identified. Outliers were identified and removed using z score method. One feature transformed using logarithm to create a more normal distribution to improve the performance of models. All features were scaled and centered. After the preprocessing of the data, 2776 usable observations remained [@PDFPowerOutliers].
+
+Bootstrap sampling was used to create a larger dataset so that the performance of the models could be compared between the original and bootstrapped data.
+
+The description of the predictive features shows the range of scales, ranging by and order of magnitude (\autoref{tab:feat-desc}, \autoref{tab:feat-desc-post} in Appendix: Data Description Tables). Several models such as support vector machine analysis are affected by the scale and centering of the data it learns from, so it this was identified as an important preprocessing step that had to be performed.
+
+```{r read-data}
+#| cache: true
+
+data <- read_csv("Data(2).csv")
+
+
+```
+
+## Exploratory Data Analysis Approach
+
+```{r correlation-heatmap, fig.cap="**Feature and Class Correlation Matrix:** *highlighting relationships between variables and relationships with categorical labels*", out.width="100%", fig.margin=TRUE}
+#| label: fig-corrmap
+#| cache: true
+
+one_hot_data <- model.matrix(~ label - 1, data = data)
+one_hot_data <- data %>%
+  select(-label) %>%
+  bind_cols(one_hot_data)
+
+cor_matrix <- cor(one_hot_data, use = "complete.obs", method = "pearson")
+cor_data <- melt(cor_matrix)
+
+ggplot(cor_data, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(
+    color = "white", 
+    size = 0.25
+  ) +
+  scale_fill_gradient2(
+    low = "darkblue",
+    high = "darkred",
+    mid = "white",
+    name = "Correlation",
+    limit = c(-1, 1), 
+    guide = guide_colorbar(barwidth = 1, barheight = 10)
+  ) + 
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 60, vjust = 0.75, hjust = 0.5, size = 7),  # all the feature names overlap if horisontal
+    axis.text.y = element_text(size = 7),
+    axis.title = element_blank(),           # axis titles arent meaningful
+    panel.grid = element_blank(),       
+    aspect.ratio = 1,                       # make plot square
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 10)
+  ) +
+  coord_fixed()
+```
+
+Within the data there are two groups of features that correlate together - X7, X8, and X9, and X17 to X20 (\autoref{fig-corrmap}). Noticing groups of correlated features is important since some models such as logistic regression and SVM will struggle with multicollinearity. This will lead us to attempt feature selection or dimensionality reduction with these models, or choose alternative algorithms that are more robust in these cases such as tree-based algorithms.
+
+The difference between these two group is that while X7, X8, and X9 are three features with some of the strongest correlations with the label values, all of X17 to X20 are features without significant correlations. This would lead us to believe that X17 - X20 have low predictive power in classification that aim to predict the class label and so removing them entirely would be a justifiable approach.
+
+Among the other columns, we see that there are definitely some columns with stronger correlations than others.
+
+To produce the correlation matrix, the four categorical labels were one hot encoded to create four binary columns. This allows us to see that several features have strong predictive power for one or more label but not all. For example, \autoref{fig-corrmap} shows us X8 has high correlations with classes A, B, and C, but none very low correlation with class D. This contrasts with a feature like X11 which has equal magnitude of correlation across all four labels.
+
+```{r column-histograms, fig.cap="**Distributions within feature columns:** *histograms showing scale and skewness of data*", out.width="100%"}
+#| label: fig-hists
+#| cache: true
+
+data_long <- drop_na(data) %>%
+  select(- starts_with("label")) %>%
+  pivot_longer(
+    cols = everything(), 
+    names_to = "variable", 
+    values_to = "value"
+  ) %>%
+  mutate(
+    dist_group = case_when(
+      variable == "X7" ~ "Bimodal",
+      variable == "X8" ~ "Skewed",
+      TRUE ~ "Normal"
+    )
+  )
+
+ggplot(data_long, aes(x = value, fill = dist_group)) +
+  geom_histogram(
+    bins = 50, 
+    alpha = 0.9,
+    size = 0.2
+  ) +
+  scale_fill_manual(
+    values = c("Normal" = "skyblue", "Bimodal" = "pink", "Skewed" = "purple"),
+    name = "Distribution"
+  ) +
+  facet_wrap(
+    ~ variable, 
+    scales = "free"
+    ) +
+  theme_minimal() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  ) +
+  labs(
+    x = "Value", 
+    y = "Count", 
+    title = "Histograms of All Columns"
+  )
+
+```
+
+The majority of the 20 predictive variables followed normal distributions. Noteable exceptions were X8, which is heavily right skewed, and X7 which has a bimodal appearance (\autoref{fig-hists}). With both of these features showing strong correlations with the labels leading to a high probability that they have strong predictive power, they should not be removed. X8 will be transformed, and the natural logarithm of X8 will be used in all modeling.
+
+```{r class-boxplots, fig.cap="**Distributions within feature columns:** *Boxplots by class label by feature*", out.width="100%"}
+#| label: fig-boxplots
+#| cache: true
+
+data_clean <- data %>% drop_na()
+clean_and_long <- pivot_longer(data_clean, cols = 1:20, names_to= "Feature", values_to = "Value")
+boxplot_data <- clean_and_long %>%
+  mutate(
+    important = case_when(
+      Feature %in% c("X7", "X8", "X9", "X11", "X3", "X2") ~ "1",
+      Feature %in% c("X20", "X19", "X18", "X17") ~ "-1",
+      TRUE ~ "0"
+    )
+  )
+
+boxplot <- ggplot( boxplot_data,  aes(label, Value, colour=label)  ) +
+  geom_boxplot(
+    outlier.shape = 21,
+    outlier.size = 1,
+    outlier.alpha = 0.5,
+    width = 0.7
+  ) +
+  facet_wrap(~Feature, scales="free_y") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 10),
+    panel.spacing = unit(0.5, "lines"),
+    legend.position = "right",
+    axis.text.x = element_text(angle = 0, size = 8),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    # panel.border = element_rect(
+    #   colour = case_when(
+    #     boxplot_data$important == "1" ~ "red",
+    #     boxplot_data$important == "-1" ~ "lightblue",
+    #     boxplot_data$important == "0" ~ "white"
+    #   ),
+    #   fill = NA,
+    #   size = 0.5
+    # )
+  ) +
+  geom_rect(data = subset(boxplot_data, important == "1") %>% 
+              distinct(Feature, important),
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            color = "red", fill = NA, size = 0.7, alpha = 0.8,
+            inherit.aes = FALSE) +
+  geom_rect(data = subset(boxplot_data, important == "-1") %>% 
+              distinct(Feature, important),
+            aes(xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf),
+            color = "blue", fill = NA, size = 0.7, alpha = 0.8,
+            inherit.aes = FALSE)
+
+boxplot
+```
+
+Across the entire dataset, the distribution of labels is uniform, with roughly on quarter of the observations falling into each category.
+
+When the distribution of each feature is observed by class label some features have significantly different characteristics for each class. In \autoref{fig-boxplots}, highlighted with a red boarder are features where we can see notable differences in the key descriptive statistics such as medians and interquartile ranges between different classes. Highlighted in blue boarders are the features where the boxplots look almost identical from one feature to another. This gives insight into which features will be important for building effective models - it is expected that features such as X7 with very different stats per class will be useful at creating decision boundaries or defining distributions for model-based clustering.
+
+```{r pca-plot, fig.cap="**PCA plotting of class labels:** *scatterplot showing clustering tendency of categorical classes*", out.width="100%"}
+#| label: fig-pca
+#| cache: true
+
+data_clean <- data %>% drop_na() # pca wont work with null values in the frame
+pc <- prcomp(data_clean[1:20],
+            center = TRUE,
+            scale = TRUE)
+pc_data <- data.frame(pc$x)
+
+labelled_pca <- bind_cols(pc_data[1:2], data.frame(data_clean$label), .name_repair = "universal")
+
+ggplot(labelled_pca, aes(x=PC1, y=PC2, colour=data_clean.label)) +
+      geom_point(
+        alpha=0.4
+        ,size=1
+      ) +
+      labs(
+          colour="Class"
+        ) +
+  geom_density2d(alpha=0.7)
+    
+```
+
+It is important to learn about the structure of the underlying data in order to understand the chances of success with modeling methods. Using principal Componant Analysis captures most of the information in the system in one scatter plot (\autoref{fig-pca}). This shows that there is some underlying structure to the data that will lead to the formation of clusters, although it is fairly loose in this plot. Annotating the points with the target label shows us that classes A, B, and C form ellipsoidal groups that are roughly equal in size and orientation, and offset along the second principal component. The fourth class (D) forms a larger ellipsoid that overlaps significantly with the other three.
+
+The separation of the first three classes suggests there is information in the features that allow statistical models to discern between them, but the overlap of class D means that this class may have more misclassifications. It may be challenging to find an approach that is effective for this label.
+
+The fact that the three classes that are distinct are displaced along the second principal component and not the first principal component means that it is the dimensions with less variation that distinguish them. It would be easier to separate the groups with predictive models if they were offset along the first principal component.
+
+To learn more about the underlying structure of the dataset, the clustering tendency can be examined by calculating the Hopkins statistic, where a score close to 1 indicates strong clustering tendency, a score of 0.5 indicates random distribution of occurrences, and 0 a uniform distribution [@wrightWillRealHopkins2022].
+
+```{r hopkins}
+#| cache: true
+
+data_clean <- read_csv("data_clean.csv") %>% mutate(label = as.factor(label))
+
+hopkins_stat <- hopkins(data_clean[0:20], m = nrow(data_clean)/10) 
+# we leave one row out to be the 'reference point' that we measure the distance to the other points from. i think. 
+
+data_unlabelled <- data_clean %>% select(-label)
+hopkins_stat_unlabelled <- hopkins(data_unlabelled[0:19], m = nrow(data_unlabelled)/10)
+
+binary_data <- data_clean %>% mutate(label = factor( ifelse(label == "D", 1, 0), levels = c(0, 1) ))
+binary_hopkins_stat <- hopkins(binary_data[0:20], m = nrow(binary_data)/10)
+
+correlated_data <- data_clean %>%
+  select(
+    X2,
+    X3,
+    X7,
+    X8,
+    X9,
+    X11
+  )
+hopkins_stat_high_diffs <- hopkins(correlated_data, m = nrow(correlated_data)/10) 
+
+
+least_correlated_data <- data_clean %>%
+  select(
+    X17,
+    X18,
+    X19,
+    X20
+  )
+hopkins_stat_low_corr <- hopkins(least_correlated_data, m = nrow(least_correlated_data)/10) 
+
+boring_data <- data_clean %>%
+  select(
+    X1,
+    X4,
+    X6,
+    X10,
+    X12,
+    X13,
+    X14,
+    X15,
+    X16
+  )
+hopkins_stat_boring <- hopkins(boring_data, m = nrow(boring_data)/10)
+
+# Print result
+# print(hopkins_stat)
+# print(hopkins_stat_unlabelled)
+# print(binary_hopkins_stat)
+# print(hopkins_stat_high_diffs)
+# print(hopkins_stat_low_corr)
+# print(hopkins_stat_boring)
+
+names = c("All Features + Label", "All Features with Label Removed", "All Features Binary Class D vs Rest", "Features X2,X3,X7,X8,X9,X11", "Features X17,X18,X19,X20", "Features X1,X4,X6,X10,X12,X13,X14,X15,X16")
+# print(names)
+scores = c(hopkins_stat, hopkins_stat_unlabelled, binary_hopkins_stat, hopkins_stat_high_diffs, hopkins_stat_low_corr, hopkins_stat_boring)
+# print(scores)
+df <- data.frame(names, scores) %>% 
+  rename(
+    "Columns used" = names,
+    "Hopkins Statistic Score" = scores
+  )
+
+hopkins_table <- df %>%
+  kable(
+    caption = "Hopkins Statistic Scores \\label{tab:hopkins}", 
+    digits = 7, 
+    align = "lc", # left align the column names, but centre the scores
+    booktabs = TRUE,
+    na="-",
+    longtable = FALSE,
+    format = "latex"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+hopkins_table
+```
+
+There is a very high clustering tendency for various treatments of the data, as presented in \autoref{tab:hopkins}. The statistic remains high when the label is removed from the feature set. This is promising for pursuing unsupervised approaches, since it confirms the 20 numeric features contain the information that are structuring the data into clusters, rather than the label itself providing a significant amount of this structure. If the score dropped when the label was removed, this would suggest that the label was necessary for dividing the data into classes and the features themselves did not contain sufficient predictive information to do so.
+
+Similarly, the score remains high for three different groups of features. These three groups are the groups we see with different coloured boarders in the boxplots (\autoref{fig-boxplots}). This means that even the features with low correlation with the labels provide structure to the data. This could suggest that there are other ways that the data could be structured when using unsupervised models that do not correspond with the given labels.
+
+Overall, we see from exploratory data analysis that this data contains high amounts of information usable for predictive modeling, and a high clustering tendency which is promising for unsupervised clustering. Multicolinarity has been observed among several features that could hinder model performance.
+
+```{r}
+data <- read_csv("data_clean.csv")
+
+# will be used in unsupervised learning
+data_labels <- data %>% select(label) %>% mutate(label = as.factor(label))
+data_features <- data %>% select(-label)
+```
+
+## Supervised Learning Methods
+
+### logistic regression - class weighting, regularization, feature selection.
+
+A simple model, logistic regression is quick to implement and will reveal more about the data, in particular how different features contribute to predictions [@MultinomialLogisticRegression].
+
+There are variations such as weighting and regularization [@jamesIntroductionStatisticalLearning2023, pp. 240-253] which will be implemented - the success of lack of success of these techniques will reveal characteristics about our data that will be valuable to inform the selection and implementation of other models [@WeightedLogisticRegression]
+
+### Random forest, feature selection, tuning of mtry.
+
+Random Forest was chosen due to its resilience. One of the more robust option, it is a good choice for handling the data without extra processing. Several characteristics of the data have been identified that may cause other models such as logistic regression and SVM to struggle:
+
+-   Correlation of features
+-   Features that appeared to have low linear correlations with the label values (from heatmap in EDA) but still contributed to the predictive ability of the model. This suggests there might be some non-linear relationships between features and the target variable
+-   Features that aren't perfectly normally distributed, such as the bimodal peak in X7
+
+Random Forest is a robust algorithm with few underlying assumptions that will handle these considerations well [@jamesIntroductionStatisticalLearning2023 pp. 346-347]. Random Forest resists overfitting because of the sampling approach, it handles non linearity well, and it is naturally suited to multinomial classifications problems, like the one we have with four possible values for label. I also think that tree based models may perform well at distinguishing class A from class D, which was the biggest challenge that held back our logistic regression modeling. This is because it can prioritize at an early node in the tree a feature such as X11, which is one of the few that had high importance for discerning between class A and D, and then refine the selection in further nodes.
+
+### SVM, feature selection, tuning kernel selection, gamma, cost parameters.
+
+SVM is a powerful and popular algorithm. SVM has options for different kernels that can be tuned, and this is a promising approach to solving the challenges of Separating class A from class D that is evident from the data analysis and the results of logistic regression [@jamesIntroductionStatisticalLearning2023 pp. 378 - 382]. It might be the case that A and D aren't linearly separable, but a non-linear kernel will have success.
+
+## Unsupervised Learning Methods
+
+### Agglomerative hierarchical clustering, tuning linking metric.
+
+Agglomerative hierarchical clustering was chosen because it is interesting to explore a model where the number of clusters is not specified and let the natural structure of the data reveal itself.
+
+Biological data is often naturally hierarchical, for example animals can be classified by dividing them into first kingdoms, then families of species, and finally species and sub-species [@caiESPRITForestParallelClustering2017].
+
+Although the exact meaning of each feature in the data isn't known, it is biological in origin (perhaps gene expressions or environmental factors). This means that there may be a hierarchy of classes in our data.
+
+Using this method without specifying that there are four values for label might reveal that some of the labels have a strong tendency to form sub classes, or that there is little structure in the data to justify asserting there are four classes. These would both be interesting finds.
+
+It is also a model that handles the feature correlation well, which allows us to keep in all the columns that correlate like X7, X8, and X9.
+
+### Gaussian mixture model clustering, model selection, regularization, dimensionality reduction using factor analysis.
+
+So far while working with this data set, it has been challenging to separate class D. By plotting the results of some of the methods in specific dimensions, we have been able to show that class D significantly overlaps the other classes. We have also seen from the two dimensional PCA scatterplot that this is general overlap between all the classes in the the first two principal components of the data.
+
+Lots of clustering methods struggle with Separating overlapping clusters, so for the final method I wanted to choose one that might perform better with this challenge in mind. A Gaussian Mixture Model (gmm) approach was chosen - a model-based clustering technique that assumes that all the data is distributed according to the combination of different normal distributions [@GaussianMixtureModel]. There is a fair chance of gmm performing well on our dataset because it is probabilistic, calculating the probability that a data point is in each cluster. This can help it perform better than other methods like k-means when there aren't clear boundaries between the clusters such as we see with class D.
+
+Another advantage it has is that it has some flexibility in the geometry of the clusters it produces, unlike k-means which tends to produce spherical clusters [@geronHandsonMachineLearning2023]. This is important because we have seen that in some dimensions our classes produce ellipsoidal clusters. It also operates on very different fundamental principals to our other unsupervised method - agglomerative hierarchical clustering - so it will be good to compare the two. If model-based clustering performs much better then it could suggest that the classes of our data are not hierarchical in nature.
+
+# Results
+
+In this section the results of various models are presented through performance metrics such as accuracy, recall, precision and f1 score [@grusDataScienceScratch2019]. More details on the approach to tuning and evaluation can be found in notebooks [@hillAdvancedstatistics2025].
+
+## Supervised Learning Results
+
+### Logistic Regression {.avoid-page-break}
+
+```{r simple-logistic-regression-confusion-matrix}
+#| cache: true
+
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label) # factor is like an enum, means A,B,C,D are read as categories not strings
+set.seed(2626) # set the seed at the top so the entire doc is reproducable
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>% 
+  createDataPartition(p = 0.8, list = FALSE) # create 80:20 split for train:test
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+simple_logreg_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data,
+    trace = FALSE
+    )
+simple_logreg_predictions <- predict(simple_logreg_model, test_data, type = "class")
+simple_logreg_conf_matrix = confusionMatrix(simple_logreg_predictions, test_data$label)
+simple_logreg_conf_df <- as.data.frame(simple_logreg_conf_matrix$table)
+
+simple_logreg_conf_df <- simple_logreg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+simp_logreg_confm_table <- simple_logreg_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression Confusion Matrix \\label{tab:slogrreg-cm}", 
+    longtable = FALSE,
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    format = "latex",
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+simp_logreg_confm_table
+
+
+simp_logreg_overall_stats <- data.frame(
+  Statistic = names(simple_logreg_conf_matrix$overall),
+  Value = simple_logreg_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+simp_logreg_overall_stats_table <- simp_logreg_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression Overall Statistics \\label{tab:slogreg-stats}",
+    col.names = c("Statistic", "Value"),
+    longtable = FALSE,
+    format = "latex",
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+simp_logreg_overall_stats_table
+
+
+
+simp_logreg_byClass_stats <- as.data.frame(simple_logreg_conf_matrix$byClass)
+simp_logreg_byClass_stats <- t(simp_logreg_byClass_stats) # I want the class names to be columns not rows
+simp_logreg_byClass_stats <- as.data.frame(simp_logreg_byClass_stats)
+
+
+simp_logreg_byClass_stats_table <- simp_logreg_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression Statistics by Class \\label{tab:slogreg-classStats}",
+    digits = 4,
+    align = "lccccc",
+    format = "latex",
+    longtable = FALSE,
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+simp_logreg_byClass_stats_table
+```
+
+```{r simple-logistic-regression-roc-curve, fig.cap="**Simple Logistic Regression ROC Plot:** *ROC plot for Class D vs Not Class D*", fig.margin=TRUE}
+#| label: fig-sLogRegROC
+#| cache: true
+
+simple_logreg_probabilities <- predict(simple_logreg_model, test_data, type = "probs") # using type=probs gives a probability of the label value. This lets us know when the model is making confident or unconfident predictions
+is_class_d <- ifelse(test_data$label =="D", 1, 0)
+class_d_probs <- as.data.frame(simple_logreg_probabilities)$D
+
+# these produce a 1 and 0 for true and false for the actual value of class D for each row in data, and then the probability of each row being class d according to the model
+
+roc <- roc(is_class_d, class_d_probs)
+auc_value <- auc(roc)
+
+plot(roc, main = paste("ROC Curve: Class D vs. All (AUC =", round(auc_value, 3), ")"),
+     col = "blue", lwd = 2, 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)")
+
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+
+```{r logistic-regression-feature-selection}
+#| cache: true
+
+train_data_logreg_fs1 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+test_data_logreg_fs1 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15, X16, X18, label)
+logreg_featselection_1_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_logreg_fs1,
+    trace = FALSE
+  )
+logreg_featselection_1_predictions <- predict(logreg_featselection_1_model, test_data_logreg_fs1, type = "class") # using type-class gives a prediction of the 
+logreg_featselection_1_conf_matrix = confusionMatrix(logreg_featselection_1_predictions, test_data_logreg_fs1$label)
+
+logreg_featselection_1_conf_df <- as.data.frame(logreg_featselection_1_conf_matrix$table)
+
+logreg_featselection_1_conf_df <- logreg_featselection_1_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+logreg_featselection_1_confm_table <- logreg_featselection_1_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Confusion Matrix \\label{tab:fs1-logreg-cm}", 
+    digits = 7, 
+    align = "c",
+    booktabs = TRUE,
+    format = "latex",
+    longtable = FALSE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+logreg_featselection_1_confm_table
+
+
+logreg_featselection_1_overall_stats <- data.frame(
+  Statistic = names(logreg_featselection_1_conf_matrix$overall),
+  Value = logreg_featselection_1_conf_matrix$overall
+)  %>%
+  filter(Statistic != "McnemarPValue")
+
+
+logreg_featselection_1_overall_stats_table <- logreg_featselection_1_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Overall Statistics \\label{tab:fs1-logreg-os}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    longtable = FALSE,
+    format = "latex",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+logreg_featselection_1_overall_stats_table
+
+
+
+logreg_featselection_1_byClass_stats <- as.data.frame(logreg_featselection_1_conf_matrix$byClass)
+logreg_featselection_1_byClass_stats <- t(logreg_featselection_1_byClass_stats) # I want the class names to be columns not rows
+logreg_featselection_1_byClass_stats <- as.data.frame(logreg_featselection_1_byClass_stats)
+
+
+logreg_featselection_1_byClass_stats_table <- logreg_featselection_1_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression with selected features (X17,X19,X20 removed) Statistics by Class \\label{tab:fs1-logreg-classStats}",
+    longtable = FALSE,
+    format = "latex",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+logreg_featselection_1_byClass_stats_table
+
+
+
+
+
+
+train_data_logreg_fs2 <- train_data %>% select(X1, X2, X3, X4, X5, X6, X7, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+test_data_logreg_fs2 <- test_data %>% select(X1, X2, X3, X4, X5, X6, X7, X10, X11, X12, X13, X14, X15, X16, X17, X18, X19, X20, label)
+logreg_featselection_2_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data_logreg_fs2,
+    trace = FALSE
+  )
+logreg_featselection_2_predictions <- predict(logreg_featselection_2_model, test_data_logreg_fs2, type = "class") # using type-class gives a prediction of the 
+logreg_featselection_2_conf_matrix = confusionMatrix(logreg_featselection_2_predictions, test_data_logreg_fs2$label)
+
+logreg_featselection_2_conf_df <- as.data.frame(logreg_featselection_2_conf_matrix$table)
+
+logreg_featselection_2_conf_df <- logreg_featselection_2_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+logreg_featselection_2_confm_table <- logreg_featselection_2_conf_df %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Confusion Matrix \\label{tab:fs2-logreg-cm}", 
+    digits = 7, 
+    longtable = FALSE,
+    format = "latex",
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+logreg_featselection_2_confm_table
+
+
+logreg_featselection_2_overall_stats <- data.frame(
+  Statistic = names(logreg_featselection_2_conf_matrix$overall),
+  Value = logreg_featselection_2_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+logreg_featselection_2_overall_stats_table <- logreg_featselection_2_overall_stats %>%
+  kable(
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Overall Statistics \\label{tab:fs2-logreg-stats}",
+    col.names = c("Statistic", "Value"),
+    longtable = FALSE,
+    digits = 4,
+    format = "latex",
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+logreg_featselection_2_overall_stats_table
+
+
+
+logreg_featselection_2_byClass_stats <- as.data.frame(logreg_featselection_2_conf_matrix$byClass)
+logreg_featselection_2_byClass_stats <- t(logreg_featselection_2_byClass_stats) # I want the class names to be columns not rows
+logreg_featselection_2_byClass_stats <- as.data.frame(logreg_featselection_2_byClass_stats)
+
+
+logreg_featselection_2_byClass_stats_table <- logreg_featselection_2_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Simple Logistic Regression with selected features (X8,X9 removed) Statistics by Class \\label{tab:fs2-logreg-classStats}",
+    digits = 4,
+    longtable = FALSE,
+    align = "lccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+logreg_featselection_2_byClass_stats_table
+```
+
+```{r weighted-logistic-regression}
+#| cache: true
+
+class_weights <- train_data %>%
+  count(label) %>%
+  mutate(weight = 1/n, # n just always gets the value for number of observations
+         weight = weight/sum(weight) * n()) # regularize using the mean
+
+weights_vector <- train_data %>%
+  left_join(class_weights, by = "label") %>%
+  pull(weight)  # gets just the weight column as a vector
+
+weighted_model <- multinom(label ~ ., data = train_data, 
+                          weights = weights_vector,
+                          trace = FALSE)
+
+weighted_pred <- predict(weighted_model, test_data)
+weighted_logreg_conf_matrix <- confusionMatrix(weighted_pred, test_data$label)
+
+weighted_logreg_conf_df <- as.data.frame(weighted_logreg_conf_matrix$table)
+
+weighted_logreg_conf_df <- weighted_logreg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+weighted_logreg_confm_table <- weighted_logreg_conf_df %>%
+  kable(
+    caption = "Weighted Logistic Regression Confusion Matrix \\label{tab:w-logreg-cm}", 
+    digits = 7, 
+    format = "latex",
+    align = "c",
+    longtable = FALSE,
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+weighted_logreg_confm_table
+
+
+weighted_logreg_overall_stats <- data.frame(
+  Statistic = names(weighted_logreg_conf_matrix$overall),
+  Value = simple_logreg_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+weighted_logreg_overall_stats_table <- weighted_logreg_overall_stats %>%
+  kable(
+    caption = "Weighted Logistic Regression Overall Statistics \\label{tab:w-logreg-stats}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    format = "latex",
+    longtable = FALSE,
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+weighted_logreg_overall_stats_table
+
+
+
+weighted_logreg_byClass_stats <- as.data.frame(weighted_logreg_conf_matrix$byClass)
+weighted_logreg_byClass_stats <- t(weighted_logreg_byClass_stats) # I want the class names to be columns not rows
+weighted_logreg_byClass_stats <- as.data.frame(weighted_logreg_byClass_stats)
+
+
+weighted_logreg_byClass_stats_table <- weighted_logreg_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Weighted Logistic Regression Statistics by Class \\label{tab:w-logreg-classStats}",
+    digits = 4,
+    longtable = FALSE,
+    format = "latex",
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+weighted_logreg_byClass_stats_table
+
+```
+
+```{r regularized-logistic-regression-summary-table}
+#| cache: true
+
+decay_values <- c(0.001, 0.01, 0.1, 0.5, 1, 2, 10) # these are the regularization parameters we are going to try
+
+# creating a df to store the results of all models - will turn this into the report table
+results_df <- data.frame(
+  Decay = as.character(decay_values),
+  Accuracy = numeric(length(decay_values)),
+  Kappa = numeric(length(decay_values)),
+  F1_Class_A = numeric(length(decay_values)),
+  F1_Class_B = numeric(length(decay_values)),
+  F1_Class_C = numeric(length(decay_values)),
+  F1_Class_D = numeric(length(decay_values))
+)
+
+for (i in 1:length(decay_values)) {
+  decay <- decay_values[i]
+  model <- multinom(label ~ ., data = train_data, 
+                   decay = decay, 
+                   trace = FALSE)
+  predictions <- predict(model, test_data)
+  conf_matrix <- confusionMatrix(predictions, test_data$label)
+  
+  results_df$Accuracy[i] <- conf_matrix$overall["Accuracy"]
+  results_df$Kappa[i] <- conf_matrix$overall["Kappa"]
+  
+  class_metrics <- conf_matrix$byClass
+  class_names <- rownames(class_metrics)
+  
+  for (j in 1:length(class_names)) {
+    class_name <- class_names[j]
+    class_letter <- substr(class_name, nchar(class_name), nchar(class_name))
+    col_name <- paste0("F1_Class_", class_letter)
+    results_df[i, col_name] <- class_metrics[j, "F1"]
+  }
+  
+  if (i == 1 || conf_matrix$overall["Accuracy"] > best_accuracy) {
+    best_accuracy <- conf_matrix$overall["Accuracy"]
+    best_decay <- decay
+    best_conf_matrix <- conf_matrix
+    best_predictions <- predictions
+  }
+}
+
+
+decay_summary_table <- results_df %>%
+  kable(
+    caption = "Logistic Regression Performance with Different Regularization Parameters \\label{tab:r-logreg-sum}",
+    col.names = c("Decay", "Accuracy", "Kappa", 
+                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+    digits = 4,
+    longtable = FALSE,
+    align = "lcccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+decay_summary_table
+```
+
+```{r regularized-logistic-regression-viz, fig.cap="**Regularized Logistic Regression**", out.width="100%", fig.margin=TRUE}
+#| label: fig-rlogreg
+#| cache: true
+
+ggplot(results_df %>% mutate(Decay = as.numeric(Decay)) %>% pivot_longer(cols = c(Accuracy, F1_Class_A, F1_Class_B, F1_Class_C, F1_Class_D),
+                                  names_to = "Metric", values_to = "Value")) +
+  geom_line(aes(x = Decay, y = Value, color = Metric)) +
+  geom_point(aes(x = Decay, y = Value, color = Metric)) +
+  scale_x_log10() +  # Log scale for better visualisation of decay range
+  labs(title = "Effect of Regularization on Logistic Regression Performance",
+       x = "Decay Parameter (log scale)",
+       y = "Performance Metric Value") +
+  theme_minimal()
+```
+
+```{r regularized-logistic-regression-conf-matrix}
+#| cache: true
+
+best_reg_conf_df <- as.data.frame(best_conf_matrix$table)
+best_reg_conf_df <- best_reg_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+best_reg_conf_table <- best_reg_conf_df %>%
+  kable(
+    caption = paste("Confusion Matrix for Best Regularized Logistic Regression Model (Decay =", best_decay, ") \\label{tab:r-logreg-cm}"),
+    digits = 0,
+    longtable = FALSE, 
+    format = "latex",
+    align = "c",
+    booktabs = TRUE
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  )
+best_reg_conf_table
+
+```
+
+The results from logistic regression were promising given the simplicity of the model, with an accuracy of 85% shown in \autoref{tab:slogreg-stats}. Weighting was not effective for improving the model, as expected given the balance of the class labels (\autoref{tab:w-logreg-stats}). Regularization and feature selection were also ineffective (\autoref{tab:r-logreg-sum}) - somewhat surprising given the multicollinearilty seem in some columns. We saw that the model particularly under-performed at classifying class D correctly (\autoref{tab:slogreg-classStats}).
+
+### Random Forest {.avoid-page-break}
+
+The random forest performed well without any configuration, achieving 90% accuracy, shown in \autoref{tab:brf-cm}. No meaningful improvement was possible through feature selection or tuning. We learned that from the feature importance of each model that a few features were dominating the decisions made by the model - this will inform the approach to feature selection and dimensionality reduction when testing other learning approaches.
+
+```{r random-forest-base}
+#| cache: true
+invisible({
+rf_model <- randomForest(
+  label ~ ., 
+  data = train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+})
+rf_predictions <- predict(rf_model, test_data)
+rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$label)
+
+rf_conf_df <- as.data.frame(rf_conf_matrix$table)
+rf_conf_df <- rf_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_confm_table <- rf_conf_df %>%
+  kable(
+    caption = "Basic Random Forest Confusion Matrix \\label{tab:brf-cm}", 
+    digits = 7, 
+    longtable = FALSE,
+    align = "c",
+    format = "latex",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_confm_table
+
+
+rf_overall_stats <- data.frame(
+  Statistic = names(rf_conf_matrix$overall),
+  Value = rf_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+rf_overall_stats_table <- rf_overall_stats %>%
+  kable(
+    caption = "Basic Random Forest Overall Statistics \\label{tab:brf-stats}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    longtable = FALSE,
+    format = "latex",
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_overall_stats_table
+
+
+
+rf_byClass_stats <- as.data.frame(rf_conf_matrix$byClass)
+rf_byClass_stats <- t(rf_byClass_stats) # I want the class names to be columns not rows
+rf_byClass_stats <- as.data.frame(rf_byClass_stats)
+
+
+rf_byClass_stats_table <- rf_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Basic Random Forest Statistics by Class \\label{tab:brf-classStats}",
+    longtable = FALSE,
+    format = "latex",
+    digits = 4,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_byClass_stats_table
+```
+
+```{r random-forest-base-feature-importance-table}
+#| cache: true
+
+importance_values <- as.data.frame(importance(rf_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+feature_importance_table <- importance_values %>%
+  kable(
+    caption = "Basic Random Forest Feature Importance \\label{tab:brf-feat-importance}", 
+    digits = 3, 
+    align = "c",
+    format = "latex",
+    booktabs = TRUE,
+    longtable = FALSE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+feature_importance_table
+```
+
+```{r random-forest-remove-unimportant-features}
+#| cache: true
+
+selected_train_data_1 <- train_data %>%
+  select(-X17, -X19, -X20, -X15, -X6)
+selected_test_data_1 <- test_data %>%
+  select(-X17, -X19, -X20, -X15, -X6)
+rf_feat_selection_1_model <- randomForest(
+  label ~ ., 
+  data = selected_train_data_1,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+
+rf_fs_1_predictions <- predict(rf_feat_selection_1_model, selected_test_data_1)
+
+rf_fs_1_conf_matrix <- confusionMatrix(rf_fs_1_predictions, selected_test_data_1$label)
+
+
+rf_fs_1_conf_df <- as.data.frame(rf_fs_1_conf_matrix$table)
+rf_fs_1_conf_df <- rf_fs_1_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_fs_1_confm_table <- rf_fs_1_conf_df %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Confusion Matrix \\label{tab:rf-fs1-cm}", 
+    digits = 7, 
+    format = "latex",
+    align = "c",
+    booktabs = TRUE,
+    longtable = FALSE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_fs_1_confm_table
+
+
+rf_fs_1_overall_stats <- data.frame(
+  Statistic = names(rf_fs_1_conf_matrix$overall),
+  Value = rf_fs_1_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+rf_fs_1_overall_stats_table <- rf_fs_1_overall_stats %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Overall Statistics \\label{tab:rf-fs1-stats}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    align = "lc",
+    longtable = FALSE,
+    format = "latex",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_fs_1_overall_stats_table
+
+
+
+rf_fs_1_byClass_stats <- as.data.frame(rf_fs_1_conf_matrix$byClass)
+rf_fs_1_byClass_stats <- t(rf_fs_1_byClass_stats) # I want the class names to be columns not rows
+rf_fs_1_byClass_stats <- as.data.frame(rf_fs_1_byClass_stats)
+
+
+rf_fs_1_byClass_stats_table <- rf_fs_1_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Random Forest (5 least important features removed) Statistics by Class \\label{tab:rf-fs1-classStats}",
+    digits = 4,
+    format = "latex",
+    longtable = FALSE,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_1_byClass_stats_table
+```
+
+```{r random-forest-remove-unimportant-features-feature-importance}
+#| cache: true
+
+rf_fs_1_importance_values <- as.data.frame(importance(rf_feat_selection_1_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+rf_fs_1_feature_importance_table <- rf_fs_1_importance_values %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Feature Importance \\label{tab:rf-fs1-feat-importance}", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    longtable = FALSE,
+    format = "latex",
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_1_feature_importance_table
+```
+
+```{r random-forest-remove-important-features}
+#| cache: true
+
+selected_train_data_2 <- train_data %>%
+  select(-X8)
+selected_test_data_2 <- test_data %>%
+  select(-X8)
+rf_feat_selection_2_model <- randomForest(
+  label ~ ., 
+  data = selected_train_data_2,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = floor(sqrt(20)), # a typical default is sqrt(num of features) features per tree in the forest. can tune this later
+  importance = TRUE       
+)
+
+rf_fs_2_predictions <- predict(rf_feat_selection_2_model, selected_test_data_2)
+
+rf_fs_2_conf_matrix <- confusionMatrix(rf_fs_2_predictions, selected_test_data_2$label)
+
+
+rf_fs_2_conf_df <- as.data.frame(rf_fs_2_conf_matrix$table)
+rf_fs_2_conf_df <- rf_fs_2_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_fs_2_confm_table <- rf_fs_2_conf_df %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Confusion Matrix \\label{tab:rf-fs2-cm}", 
+    digits = 7, 
+    format = "latex",
+    longtable = FALSE,
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_fs_2_confm_table
+
+
+rf_fs_2_overall_stats <- data.frame(
+  Statistic = names(rf_fs_2_conf_matrix$overall),
+  Value = rf_fs_2_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+rf_fs_2_overall_stats_table <- rf_fs_2_overall_stats %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Overall Statistics \\label{tab:rf-fs2-stats}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    longtable = FALSE,
+    format = "latex",
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_fs_2_overall_stats_table
+
+
+
+rf_fs_2_byClass_stats <- as.data.frame(rf_fs_2_conf_matrix$byClass)
+rf_fs_2_byClass_stats <- t(rf_fs_2_byClass_stats) # I want the class names to be columns not rows
+rf_fs_2_byClass_stats <- as.data.frame(rf_fs_2_byClass_stats)
+
+
+rf_fs_2_byClass_stats_table <- rf_fs_2_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Random Forest (5 least important features removed) Statistics by Class \\label{tab:rf-fs2-classStats}",
+    digits = 4,
+    format = "latex",
+    longtable = FALSE,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_2_byClass_stats_table
+```
+
+```{r random-forest-remove-important-features-feature-importance}
+#| cache: true
+
+rf_fs_2_importance_values <- as.data.frame(importance(rf_feat_selection_2_model) ) %>% 
+  arrange(desc(MeanDecreaseAccuracy))
+rf_fs_2_feature_importance_table <- rf_fs_2_importance_values %>%
+  kable(
+    caption = "Random Forest (5 least important features removed) Feature Importance \\label{tab:rf-fs2-feat-importance}", 
+    digits = 3, 
+    longtable = FALSE,
+    format = "latex",
+    align = "c",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_fs_2_feature_importance_table
+```
+
+```{r tuning-random-forest, fig.cap="**Optimal mtry for Random Forest**", out.width="100%", fig.margin=TRUE}
+#| label: fig-tune-mtry
+#| cache: true
+#| output: false
+
+train_data_no_label <- train_data %>% select(- label)
+
+tuneRF_result <- tuneRF(
+  x = train_data_no_label,
+  y = train_data$label,
+  ntreeTry = 500,
+  mtryStart = 4,         # = sqrt(num of features) as before
+  stepFactor = 1.5,      # this func trys a step above and below the starting value of mtry by multiplying by this number. 1.5 is the smallest step we can be sure will round to a number bigger/smaller that our stat
+  improve = 0.01,        # model only has to imrove slightly for tuning to continue
+  trace = FALSE, # turn off trace for report          
+  plot = TRUE            
+)
+
+
+optimal_mtry <- tuneRF_result[which.min(tuneRF_result[, "OOBError"]), "mtry"]
+
+```
+
+```{r random-forest-tuned-results}
+#| cache: true
+
+rf_tuned_model <- randomForest(
+  label ~ ., 
+  data = train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = 9, # optimal value from tuning with RFTune
+  importance = TRUE       
+)
+
+
+rf_tuned_predictions <- predict(rf_tuned_model, test_data)
+rf_tuned_conf_matrix <- confusionMatrix(rf_tuned_predictions, test_data$label)
+
+rf_tuned_conf_df <- as.data.frame(rf_tuned_conf_matrix$table)
+rf_tuned_conf_df <- rf_tuned_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+rf_tuned_confm_table <- rf_tuned_conf_df %>%
+  kable(
+    caption = "Tuned Random Forest Confusion Matrix \\label{tab:rf-tuned-cm}", 
+    digits = 7, 
+    longtable = FALSE,
+    align = "c",
+    booktabs = TRUE,
+    format = "latex",
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+rf_tuned_confm_table
+
+
+rf_tuned_overall_stats <- data.frame(
+  Statistic = names(rf_tuned_conf_matrix$overall),
+  Value = rf_tuned_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+rf_tuned_overall_stats_table <- rf_tuned_overall_stats %>%
+  kable(
+    caption = "Tuned Random Forest Overall Statistics \\label{tab:rf-tuned-stats}",
+    longtable = FALSE,
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    format = "latex",
+    align = "lc",
+    booktabs = TRUE,
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+rf_tuned_overall_stats_table
+
+
+
+rf_tuned_byClass_stats <- as.data.frame(rf_tuned_conf_matrix$byClass)
+rf_tuned_byClass_stats <- t(rf_tuned_byClass_stats) # I want the class names to be columns not rows
+rf_tuned_byClass_stats <- as.data.frame(rf_tuned_byClass_stats)
+
+
+rf_tuned_byClass_stats_table <- rf_tuned_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Tuned Random Forest Statistics by Class \\label{tab:rf-tuned-classStats}",
+    digits = 4,
+    format = "latex",
+    longtable = FALSE,
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+rf_tuned_byClass_stats_table
+
+```
+
+```{r svm-kernel-selection}
+#| cache: true
+
+svm_linear <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "linear",
+  cost = 1, # will tune later - low value has softer margin on decision boundary. increasing will reduce misclassification, but increase risk of overfitting
+  scale = FALSE       # data is already scaled during preprocessing
+)
+
+svm_poly_3 <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "polynomial",
+  degree = 3,         # polynomial degree, lets just try a few
+  cost = 1,
+  scale = FALSE
+)
+
+svm_poly_5 <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "polynomial",
+  degree = 5,         # polynomial degree, lets just try a few
+  cost = 1,
+  scale = FALSE
+)
+
+svm_poly_7 <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "polynomial",
+  degree = 7,         # polynomial degree, lets just try a few
+  cost = 1,
+  scale = FALSE
+)
+
+
+svm_radial <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "radial",
+  gamma = 0.05,       # tuneable parameter. idk what it does though
+  cost = 1,
+  scale = FALSE
+)
+
+
+
+svm_sigmoid <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "sigmoid",
+  gamma = 0.05,     # controls how steep/flat the sigmoid curve is. lower value is flatter and gives softer decision boundary
+  coef0 = 0.5,    # Controls the y intercept shift of the sigmoid function - if 0 then the sigmoid goes throught he origin
+  cost = 1,
+  scale = FALSE   
+)
+
+models <- list(svm_linear, svm_poly_3, svm_poly_5, svm_poly_7, svm_radial, svm_sigmoid)
+
+model_names <- c("Linear", "Polynomial - Order 3", "Polynomial - Order 5", "Polynomial - Order 7", "Radial", "Sigmoid")
+
+
+results_df <- data.frame(
+  Kernel = character(length(models)),
+  Accuracy = numeric(length(models)),
+  Kappa = numeric(length(models)),
+  F1_Class_A = numeric(length(models)),
+  F1_Class_B = numeric(length(models)),
+  F1_Class_C = numeric(length(models)),
+  F1_Class_D = numeric(length(models))
+)
+
+# im making sure the levels of the class labels are the same between test and train to rule this out as a reason the confusion matrix cant be calculated
+
+lvls <- levels(train_data$label)
+test_data$label <- factor(test_data$label, levels = lvls)
+
+for (i in 1:length(models)) {
+  model <- models[[i]]
+  model_name <- model_names[[i]]
+  
+  predictions <- predict(model, test_data)
+  conf_matrix <- confusionMatrix(predictions, test_data$label)
+  
+  results_df$Kernel[[i]] <- model_names[[i]]
+  results_df$Accuracy[[i]] <- conf_matrix$overall["Accuracy"]
+  results_df$Kappa[[i]] <- conf_matrix$overall["Kappa"]
+  
+  class_metrics <- conf_matrix$byClass
+  class_names <- rownames(class_metrics)
+  
+  for (j in 1:length(class_names)) {
+    class_name <- class_names[j]
+    class_letter <- substr(class_name, nchar(class_name), nchar(class_name))
+    col_name <- paste0("F1_Class_", class_letter)
+    results_df[i, col_name] <- class_metrics[j, "F1"]
+  }
+  
+  if (i == 1 || conf_matrix$overall["Accuracy"] > best_accuracy) {
+    best_accuracy <- conf_matrix$overall["Accuracy"]
+    best_kernel <- model_name
+    best_conf_matrix <- conf_matrix
+    best_predictions <- predictions
+  }
+}
+
+
+svm_kernel_summary_table <- results_df %>%
+  kable(
+    caption = "SVM Performance with Different Kernels \\label{tab:svm-kernel-accuracy}",
+    col.names = c("Kernel", "Accuracy", "Kappa",
+                  "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+    digits = 4,
+    longtable = FALSE,
+    format = "latex",
+    align = "lcccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+svm_kernel_summary_table
+```
+
+```{r svm-tune-hyperparameters, fig.cap="**Hyperparameter Affect on SVM Performance**"}
+#| label: fig-svm-hyperparameters
+#| cache: true
+
+tune_grid <- expand.grid(
+  C = c(0.01, 0.1, 1, 10, 100), # values of the cost parameter, lower values have softer margin
+  sigma = c(0.01, 0.05, 0.1, 0.5, 1) # values of the gamma parameter
+)
+
+
+svm_tune <- train(
+  label ~ .,
+  data = train_data,
+  method = "svmRadial",
+  preProcess = NULL,
+  tuneGrid = tune_grid,
+  trControl = trainControl(method = "cv", number = 5) # cv is crossvalidation, 5 is the number of folds
+)
+
+
+plot(svm_tune)
+
+```
+
+```{r svm-final-summary-tables}
+#| cache: true
+
+tune_grid <- expand.grid(
+  C = c(0.164, 0.166, 0.168, 0.17, 0.172, 0.174, 0.176, 0.178, 0.18, 0.182, 0.185, 0.187, 0.19, 0.192, 0.195, 0.1975, 0.2, 0.202), # values of the cost parameter, lower values have softer margin
+  sigma = c(0.038, 0.039, 0.04, 0.041, 0.044, 0.0445, 0.045, 0.0455, 0.046, 0.0465, 0.047, 0.048, 0.049, 0.05, 0.051, 0.052, 0.053, 0.054, 0.055) # values of the gamma parameter
+)
+
+
+svm_tune <- train(
+  label ~ .,
+  data = train_data,
+  method = "svmRadial",
+  preProcess = NULL,
+  tuneGrid = tune_grid,
+  trControl = trainControl(method = "repeatedcv", number = 10, repeats = 5) # cv is crossvalidation, 5 is the number of folds
+  # with three repeats, the tuning is run 3 times and the average results are returned
+)
+
+
+
+# Extract optimal parameters
+optimal_params <- svm_tune$bestTune
+# optimal_params
+
+
+
+svm_final_model <- svm(
+  label ~ .,
+  data = train_data,
+  kernel = "radial",
+  gamma = optimal_params$sigma,
+  cost = optimal_params$C,
+  scale = FALSE
+)
+
+
+svm_final_predictions <- predict(svm_final_model, test_data)
+svm_final_conf_matrix <- confusionMatrix(svm_final_predictions, test_data$label)
+
+
+svm_final_conf_df <- as.data.frame(best_conf_matrix$table)
+svm_final_conf_df <- svm_final_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+svm_final_confm_table <- svm_final_conf_df %>%
+  kable(
+    caption = "SVM Tuned Model Confusion Matrix \\label{tab:svm_tuned_cf}",
+    digits = 7,
+    longtable = FALSE,
+    align = "c",
+    booktabs = TRUE,
+    format = "latex",
+    na="-"
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>%
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+svm_final_confm_table
+
+
+svm_final_overall_stats <- data.frame(
+  Statistic = names(rf_conf_matrix$overall),
+  Value = rf_conf_matrix$overall
+)
+
+
+svm_final_overall_stats_table <- svm_final_overall_stats %>%
+  kable(
+    caption = "SVM Tuned Model Overall Statistics \\label{tab:svm_tuned_stats}",
+    col.names = c("Statistic", "Value"),
+    digits = 4,
+    longtable = FALSE,
+    align = "lc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+svm_final_overall_stats_table
+
+
+
+svm_final_byClass_stats <- as.data.frame(svm_final_conf_matrix$byClass)
+svm_final_byClass_stats <- t(svm_final_byClass_stats) # I want the class names to be columns not rows
+svm_final_byClass_stats <- as.data.frame(svm_final_byClass_stats)
+
+
+svm_final_byClass_stats_table <- svm_final_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "SVM Tuned Model Statistics by Class \\label{tab:svm_tuned_class_stats}",
+    longtable = FALSE,
+    digits = 4,
+    align = "lccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+svm_final_byClass_stats_table
+
+
+```
+
+\clearpage
+
+```{r plt-x7-vs-x8-misclassifications, fig.cap="**Classifications and Misclassifications - X7 by X8**", fig.margin=TRUE, out.width="100%", fig.height=6, fig.pos="H"}
+#| label: fig-x78-misclassifcations
+#| cache: true
+
+svm_prediction_df <- data.frame(
+  X7 = test_data$X7,
+  X8 = test_data$X8,
+  Actual = test_data$label,
+  Predicted = svm_final_predictions,
+  Correct = test_data$label == svm_final_predictions
+)
+
+
+svm_classification_78_plot <- ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Predicted, shape = Actual)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "SVM Classification: X7 vs X8",
+       x = "X7", y = "X8",
+       color = "Predicted Class",
+       shape = "Actual Class") +
+  theme_minimal()
+
+
+svm_misclassification_78_plot <- ggplot(svm_prediction_df, aes(x = X7, y = X8, color = Correct, shape = Actual)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = c("TRUE" = "green", "FALSE" = "red")) +
+  labs(title = "SVM Misclassifications: X7 vs X8",
+       x = "X7", y = "X8",
+       color = "Correctly Classified",
+       shape = "Actual Class") +
+  theme_minimal()
+
+svm_x78_combined_plot <- svm_classification_78_plot / svm_misclassification_78_plot + 
+  plot_layout(heights = c(1, 1))
+
+svm_x78_combined_plot
+
+```
+
+### SVM {.page-break-avoid}
+
+SVM was tuned to find the best performing kernel was radial (\autoref{tab:svm-kernel-accuracy}), and optimal hyperparameters were found. \autoref{fig-svm-hyperparameters} visualizes the tuning approach, and a progressively finer mesh of parameter values was used to find the maximum accuracy.
+
+SVM performed well with overall accuracy on par with random forest (\autoref{tab:svm_tuned_stats}, \autoref{tab:rf-tuned-stats}), but SVM actually had a higher F1 score on the challenging class D, while random forests' high overall accuracy was formed in part by excelling at classifying class B (\autoref{tab:svm_tuned_class_stats}, \autoref{tab:rf-tuned-classStats}). This suggests that between the two, SVM could be the better choice for a lot of use cases.
+
+The tuning of SVM was extensive, and it is unlikely that performance can be improved much further using a model with this architecture. \autoref{fig-x78-misclassifcations} visualizes the actual classes vs the predicted classes, and shows that the misclassifications are spread across the feature space with little pattern, suggesting that a decision boundary that separates them into their correct classes will be very challenging to find.
+
+## Unsupervised Learning Results
+
+### Agglomerative Hierarchical Clustering
+
+Since agglomerative hierarchical clustering has no specified number of clusters, the first step was to employ methods to try and determine the optimal number of clusters. \autoref{fig-optimal-cluster-plots} shows the results of three different methods, and shows that there is no consensus between them on optimal number of clusters. In particular, \autoref{fig-optimal-cluster-plots}.c shows an elbow plot with no clear angle for choosing an optimal number of clusters. This is a first sign that this method of clustering may not be appropriate for our data. With this in mind, the technique will be evaluated by cutting the model's tree at four clusters, since we know this is the true number of labels in the data.
+
+```{r optimal-cluster-stats}
+#| cache: true
+
+sil_plot <- fviz_nbclust(data_features, hcut, method = "silhouette", k.max = 10) +
+  labs(title = "fig 11.a - Silhouette Method")
+
+gap_plot <- fviz_nbclust(data_features, hcut, method = "gap_stat", k.max = 10, nboot = 50) +
+  labs(title = "fig 11.b - Gap Statistic")
+
+elbow_plot <- fviz_nbclust(data_features, hcut, method = "wss", k.max = 10) +
+  labs(title = "fig 11.c - Elbow Method")
+```
+
+```{r optimal-cluster-plots, fig.cap="**Optimal clusters using silhouette, gap, and elbow methods**", fig.height=8, out.width="100%", fig.margin=TRUE}
+#| label: fig-optimal-cluster-plots
+#| cache: true
+
+p1 <- sil_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10),
+    axis.title.x = element_blank(),  # Remove x-axis title from first two plots
+  )
+
+p2 <- gap_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10),
+    axis.title.x = element_blank()
+  )
+
+p3 <- elbow_plot + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 10)
+  )
+
+
+combined_plot <- p1 / p2 / p3 + 
+  plot_layout(heights = c(1, 1, 1)) +
+  plot_annotation(
+    title = "Optimal Number of Clusters",
+    theme = theme(plot.title = element_text(size = 12))
+  )
+
+combined_plot
+```
+
+```{r hc-models}
+#| cache: true
+
+dist_matrix <- dist(data_features, method = "euclidean")
+
+
+hc_complete <- hclust(dist_matrix, method = "complete")
+hc_average <- hclust(dist_matrix, method = "average")
+hc_single <- hclust(dist_matrix, method = "single")
+hc_ward <- hclust(dist_matrix, method = "ward.D2")
+
+
+hc_complete_clusters <- cutree(hc_complete, k = 4)
+hc_complete_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_complete_clusters
+  )
+hc_complete_balance <- hc_complete_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_ward_clusters <- cutree(hc_ward, k = 4)
+hc_ward_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_ward_clusters
+  )
+hc_ward_balance <- hc_ward_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+hc_average_clusters <- cutree(hc_average, k = 4)
+hc_average_results <- data.frame(
+    label = data_labels$label,
+    prediction = hc_average_clusters
+  )
+hc_average_balance <- hc_average_results %>% 
+  group_by(prediction) %>%
+  summarize(count = n()) %>%
+  mutate("%" = ( count/sum(count) )* 100)
+
+
+linkages <- c("Complete", "Ward", "Average")
+hc_complete_balance$`%`[4]
+cluster_1 <- c(hc_complete_balance$`%`[1], hc_ward_balance$`%`[1], hc_average_balance$`%`[1])
+cluster_2 <- c(hc_complete_balance$`%`[2], hc_ward_balance$`%`[2], hc_average_balance$`%`[2])
+cluster_3 <- c(hc_complete_balance$`%`[3], hc_ward_balance$`%`[3], hc_average_balance$`%`[3])
+cluster_4 <- c(hc_complete_balance$`%`[4], hc_ward_balance$`%`[4], hc_average_balance$`%`[4])
+
+balance_summary <- data.frame(
+  linkages,
+  cluster_1,
+  cluster_2,
+  cluster_3,
+  cluster_4
+)
+
+balance_summary_table = balance_summary %>%
+  kable(
+    caption = "Hierarchical Clustering - proportion of data in each cluster \\label{tab:hc_cluster_balance}", 
+    digits = 2, 
+    align = "lcccc",
+    longtable = FALSE,
+    format = "latex",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Percent of Observations" = 4)
+  )
+
+balance_summary_table
+
+```
+
+```{r ward-dend-fig, fig.cap="Dendrogram of Hierarchical Clustering using Ward Linkage", fig.height=8, out.width="100%", fig.margin=TRUE}
+#| label: fig-dend
+#| cache: true
+
+ward_dend <- as.dendrogram(hc_ward)
+n_leaves <- length(labels(ward_dend))
+n_samples <- n_leaves - 200 # after pruning, 200 leaves remain. should give ~50 in each class
+random_positions <- sample(1:n_leaves, n_samples)
+
+pruned_ward_dend <- prune(ward_dend, random_positions)
+
+
+pruned_ward_dend <- color_branches(pruned_ward_dend, k = 4)
+
+
+leaf_labels <- labels(pruned_ward_dend)
+leaf_indices <- as.numeric(leaf_labels)
+
+
+class_labels <- data_labels$label[leaf_indices]
+
+
+class_colors <- brewer.pal(4, "Set1")
+names(class_colors) <- unique(data_labels$label)
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "labels", rep("", length(leaf_labels)))
+
+
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_pch", 19) 
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_col", class_colors[class_labels])
+pruned_ward_dend <- set(pruned_ward_dend, "leaves_cex", 1.5) 
+
+plot(pruned_ward_dend, 
+     main = "Hierarchical Clustering - Ward Linkage",
+     sub = "200 randomly sampled observations",
+     horiz = F,
+     axes = T
+)
+
+legend("topright", 
+       legend = unique(data_labels$label),
+       col = class_colors,
+       pch = 19,
+       title = "Original Classes",
+       cex = 0.8)
+
+```
+
+Agglomerative hierarchical clustering was found to be an inappropriate method for this data set. After testing several linkage methods, they were all found to produce unbalanced clusters, whereas we know that the data is evenly divided into four almost equal classes. The ward linkage produced the most balanced clusters, but even there one cluster contained almost 40% of all observations (\autoref{tab:hc_cluster_balance}). From the dendrogram, \autoref{fig-dend}, each cluster can be seen to contain a mixture of original class labels. This means that as well as producing unbalanced classes, there were likely to be misclassifications within each cluster as well. Due to its poor performance to this point, hierarchical clustering was not pursued further.
+
+### Gaussian Mixed Model Clustering
+
+```{r gmm-bic, results='hide', message=FALSE, warning=FALSE, fig.cap="**Baysian Information Criteria Plot for Choosing Optimal Model**", out.width="100%", fig.margin=TRUE}
+#| cache: true
+
+# using this invisible function to stop printing to the console appearing in the pdf, courtesy of chatgpt
+invisible({
+  original_sink <- sink.number()
+  sink(file = tempfile())
+  
+
+  #Fit Model Based clustering
+  fitM <- Mclust(data_features, trace=FALSE)
+  
+  #Choose the model
+  BIC <- mclustBIC(data_features, trace=FALSE)
+
+  while (sink.number() > original_sink) sink()
+})
+
+
+
+plot(BIC)
+```
+
+A Baysian Information Criteria (BIC) plot was created to find the best model type and optimal number of clusters. VVE was found to be the best performing model. Promisingly, the plot scored well at four clusters. Since it is known that there actually are four categorical classes in the original data, this shows that the model is learning from the distributions of all four labels. Since we saw such overlap in classes and many misclassifications in class D previously, it would have been unsurprising to see three as the optimum number of classes,suggesting that data was better described by three categories than four.
+
+In hierarchical clustering, we didn't see clear confirmation of four groups from the graphs using either the elbow method, gap method, or silhouette method.
+
+The three letters in the model name describe the shape, orientation, and orientation of the clusters that the model predicts [@Initialisation]. In this case, VVE indicates that the model is predicting clusters that are ellipsoids of equal orientation, but varying volume [@MclustModelNamesMCLUSTModel]. This makes sense based on the PCA scatterplots where the data is shown as three roughly equally size ellipses one above the other, with a fourth, larger ellipses overlaying them, with the major axis of all four being roughly horizontal (along the first principal component)
+
+```{r clustering-viz, fig.cap="GMM Cluster Plot", out.width="100%", fig.margin=TRUE}
+#| cache: true
+fviz_mclust(fitM, "classification", geom = "point", pointsize = 1.5, palette = "jco")
+```
+
+This looks really similar to the original PCA plot (\autoref{fig-pca}), with class A B and C separated and class D overlapping all three.
+
+```{r gmm-conf-matrix-and-stats-tables}
+#| cache: true
+
+gmm_results <- data.frame(
+  label = data_labels$label,
+  prediction = fitM$classification
+)
+
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# for each original label find which cluster contains it most frequently
+label_to_cluster_map <- gmm_results %>%
+  group_by(label) %>%
+  summarise(modal_cluster = Mode(prediction), .groups = "drop") %>%
+  arrange(label)  
+
+# for each cluster find which original label appears most frequently
+cluster_to_label_map <- gmm_results %>%
+  group_by(prediction) %>%
+  summarise(modal_label = Mode(label), .groups = "drop") %>%
+  arrange(prediction)
+
+
+# print("Label to Cluster mapping:")
+# print(label_to_cluster_map)
+# print("Cluster to Label mapping:")
+# print(cluster_to_label_map)
+
+
+map_cluster_to_best_label <- function(cluster) {
+  map_value <- cluster_to_label_map$modal_label[cluster_to_label_map$prediction == cluster]
+  if(length(map_value) == 0) return(NA)
+  return(map_value)
+}
+
+
+gmm_results <- gmm_results %>%
+  mutate(
+    # map each cluster to its most common original label so the names are more meaningful in the table
+    predicted_label = sapply(prediction, map_cluster_to_best_label),
+    prediction = factor(prediction),
+    predicted_label = factor(predicted_label, levels = levels(label))
+  )
+
+
+gmm_conf_matrix <- confusionMatrix(gmm_results$predicted_label, gmm_results$label)
+
+gmm_conf_df <- as.data.frame(gmm_conf_matrix$table)
+
+gmm_conf_df <- gmm_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+gmm_confm_table <- gmm_conf_df %>%
+  kable(
+    caption = "Gaussian Mixture Model Confusion Matrix \\label{tab:gmm-cm}", 
+    digits = 7, 
+    align = "c",
+    longtable = FALSE,
+    format = "latex",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+gmm_confm_table
+
+
+gmm_overall_stats <- data.frame(
+  Statistic = names(gmm_conf_matrix$overall),
+  Value = gmm_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+gmm_overall_stats_table <- gmm_overall_stats %>%
+  kable(
+    caption = "Gaussian Mixture Model Overall Statistics \\label{tab:gmm-stats}",
+    col.names = c("Statistic", "Value"),
+    longtable = FALSE,
+    format = "latex",
+    digits = 4,
+    align = "lc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+gmm_overall_stats_table
+
+
+
+gmm_byClass_stats <- as.data.frame(gmm_conf_matrix$byClass)
+gmm_byClass_stats <- t(gmm_byClass_stats) # I want the class names to be columns not rows
+gmm_byClass_stats <- as.data.frame(gmm_byClass_stats)
+
+
+gmm_byClass_stats_table <- gmm_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    caption = "Gaussian Mixture Model Statistics by Class \\label{tab:gmm-class-stats}",
+    digits = 4,
+    longtable = FALSE,
+    align = "lccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+gmm_byClass_stats_table
+
+```
+
+Gaussian mixed model clustering performed very well (\autoref{tab:gmm-cm}, \autoref{tab:gmm-stats}). It immediately had overall accuracy comparable with random forest and svm, and performed notably better than other models at Separating the fourth class successfully, with an F1 score of 0.8 (\autoref{tab:gmm-class-stats}).
+
+Attempts were made to further tune the model through regularization:
+
+```{r gmm-regularization-comparison}
+#| cache: true
+
+
+evaluate_gmm <- function(model, data_labels, model_name) {
+
+  results <- data.frame(
+    label = data_labels$label,
+    prediction = model$classification
+  )
+
+  cluster_to_label_map <- results %>%
+    group_by(prediction) %>%
+    summarise(modal_label = names(which.max(table(label))), .groups = "drop")
+
+  results$predicted_label <- sapply(results$prediction, function(cluster) {
+    map_val <- cluster_to_label_map$modal_label[cluster_to_label_map$prediction == cluster]
+    if(length(map_val) == 0) return(NA) # we need this in case the model doesn't find four clusters
+    return(map_val)
+  })
+  
+  lvls = levels(factor(data_labels$label))
+  results$predicted_label <- factor(results$predicted_label, levels = lvls)
+  results$label <- factor(results$label, levels = lvls)
+
+  ari <- adjustedRandIndex(model$classification, as.numeric(data_labels$label))
+  
+  conf_matrix <- confusionMatrix(results$predicted_label, results$label)
+  
+  accuracy <- conf_matrix$overall["Accuracy"]
+
+  class_metrics <- conf_matrix$byClass
+  f1_scores <- sapply(1:nrow(class_metrics), function(i) class_metrics[i, "F1"])
+  names(f1_scores) <- c("F1_A", "F1_B", "F1_C", "F1_D")
+  
+  
+  return(data.frame(
+    Model = model_name,
+    ARI = ari,
+    Accuracy = accuracy,
+    F1_A = f1_scores["F1_A"],
+    F1_B = f1_scores["F1_B"],
+    F1_C = f1_scores["F1_C"],
+    F1_D = f1_scores["F1_D"]
+  ))
+  
+
+}
+
+# base model has no regularization
+base_results <- evaluate_gmm(fitM, data_labels, "No regularization")
+
+
+shrinkage_values <- c(0.001, 0.01, 0.05, 0.1, 0.5)
+results_list <- list(base_results)
+
+
+for (value in shrinkage_values) {
+  model <- Mclust(data_features, G=4, 
+                 prior=priorControl(functionName="defaultPrior", shrinkage=value))
+
+  model_name <- paste0("Shrinkage = ", value)
+  model_results <- evaluate_gmm(model, data_labels, model_name)
+
+  results_list[[length(results_list) + 1]] <- model_results
+}
+
+gmm_comparison <- do.call(rbind, results_list)
+
+
+gmm_comparison_table <- gmm_comparison %>%
+  kable(
+    caption = "Gaussian Mixture Model Performance with Different Regularization Settings \\label{tab:ggm-reg-comp}",
+    col.names = c("Model", "ARI", "Accuracy", 
+                 "F1 Score (A)", "F1 Score (B)", "F1 Score (C)", "F1 Score (D)"),
+    digits = 4,
+    longtable = FALSE,
+    align = "lccccccr",
+    booktabs = TRUE,
+    format = "latex",
+    row.names = FALSE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) 
+
+
+gmm_comparison_table
+```
+
+The best performing model did not use regularization (\autoref{tab:ggm-reg-comp}).
+
+The motivation for using regularization is to help the model perform better when using features that correlate together. Since regularization in fact hindered performance, another approach is to use factor analysis to reduce the dimensionality of the data. Factor analysis is suitable because it is suited to handling the groups of correlated features notable in the EDA results, and because the data is biological in origin. With biological data, there is often an underlying cause, like a gene expression, that can have many measurable implications, like disease symptoms or physical characteristics. Because we know these mechanisms may exist in the source of our data, factor analysis is a good choice to reduce dimensions while preserving as much information as possible.
+
+```{r fa-scree-plt, fig.cap="**Scree Plot:** *for Choosing Number of Factors for Dimensionality Reduction*", out.width="100%", fig.margin=TRUE}
+#| label: fig-scree-plot
+#| cache: true
+
+invisible({
+  # Redirect console output to a null connection
+  output <- capture.output({
+    # Run the factor analysis parallel analysis
+    scree_plot <- fa.parallel(data_features, fa = "fa", fm = "ml")
+  })
+})
+```
+
+The parallel analysis results suggest that the optimum number of factors is 6 (\autoref{fig-scree-plot}). Using the maximum likelihood method finds the number of factors where the value of the eigenvalue is above what would be expected by random chance.
+
+The underlying values from the analysis show that the first two factors contribute the most, with a sharp drop after that. So a dimensionality reduction to two factors could be a reasonable option. We can also see that the seventh and eighth eigenvalues are not much smaller than the sixth, so swapping some of the smaller factors could also be a justifiable experiment.
+
+```{r fa-loadings, fig.cap="**Factor Analysis Loadings:** *loadings values by feature*", out.width="100%", fig.margin=TRUE}
+#| cache: true
+
+fa_result <- fa(data_features, 
+                nfactors = 6,  
+                rotate = "varimax",
+                fm = "ml")
+
+# print(fa_result$loadings, cutoff = 0.3)  # only interested in the larger values, its easier to read the results 
+
+
+loadings_df <- as.data.frame(fa_result$loadings[,1:6])
+loadings_df$Feature <- paste0("X", 1:20)
+# loadings_df
+loadings_long <- loadings_df %>%
+  pivot_longer(
+    cols = -Feature,
+    names_to = "Factor", 
+    values_to = "Loading" 
+  )
+
+# create heatmap to visualize
+ggplot(loadings_long, aes(x = Factor, y = Feature, fill = Loading)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "darkblue", mid = "white", high = "darkred", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab",
+                       name = "Loading") +
+  theme_minimal() +
+  labs(x = "Factor", y = "Original Feature") +
+  # label the highest loading values
+  geom_text(data = subset(loadings_long, abs(Loading) >= 0.3),
+            aes(label = round(Loading, 2)), 
+            color = "black", size = 3)
+```
+
+The loadings of features to factors shows the highly correlated features in the correlated groups are all heavily loaded to the same factor, which will succesfully decrease the multicolinearity present in the dataset.
+
+```{r ggm-fa }
+#| cache: true
+
+factor_scores <- factor.scores(data_features, fa_result)$scores
+
+
+fitM_fa <- Mclust(factor_scores)
+gmm_fa_results <- data_labels %>% mutate(prediction = fitM_fa$classification) # %>% mutate(label = as.numeric(label))
+
+label_to_cluster_map <- gmm_fa_results %>%
+  group_by(label) %>%
+  summarise(modal_cluster = Mode(prediction), .groups = "drop") %>%
+  arrange(label)  
+
+# for each cluster find which original label appears most frequently
+cluster_to_label_map <- gmm_fa_results %>%
+  group_by(prediction) %>%
+  summarise(modal_label = Mode(label), .groups = "drop") %>%
+  arrange(prediction)
+
+
+
+map_cluster_to_best_label <- function(cluster) {
+  map_value <- cluster_to_label_map$modal_label[cluster_to_label_map$prediction == cluster]
+  if(length(map_value) == 0) return(NA)
+  return(map_value)
+}
+
+
+gmm_fa_results <- gmm_fa_results %>%
+  mutate(
+    # map each cluster to its most common original label so the names are more meaningful in the table
+    predicted_label = sapply(prediction, map_cluster_to_best_label),
+    prediction = factor(prediction),
+    predicted_label = factor(predicted_label, levels = levels(label))
+  )
+
+
+gmm_fa_conf_matrix <- confusionMatrix(gmm_fa_results$predicted_label, gmm_fa_results$label)
+
+gmm_fa_conf_df <- as.data.frame(gmm_fa_conf_matrix$table)
+
+gmm_fa_conf_df <- gmm_fa_conf_df %>% pivot_wider(names_from = Reference, values_from = Freq)
+
+gmm_fa_confm_table <- gmm_fa_conf_df %>%
+  kable(
+    digits = 7, 
+    caption = "Gaussian Mixture Model using Factors - Confusion Matrix \\label{tab:ffm-fa-cm}", 
+    longtable = FALSE,
+    align = "c",
+    format = "latex",
+    booktabs = TRUE,
+    na="-"
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Reference" = 4)
+  ) #%>% 
+  # pack_rows(
+  #   "Prediction",
+  #   1,
+  #   4
+  # )
+
+gmm_fa_confm_table
+
+
+gmm_fa_overall_stats <- data.frame(
+  Statistic = names(gmm_conf_matrix$overall),
+  Value = gmm_fa_conf_matrix$overall
+) %>%
+  filter(Statistic != "McnemarPValue")
+
+
+gmm_fa_overall_stats_table <- gmm_fa_overall_stats %>%
+  kable(
+    col.names = c("Statistic", "Value"),
+    caption = "Gaussian Mixture Model using Factors - Overall Statistics \\label{tab:ggm-fa-stats}",
+    digits = 4,
+    longtable = FALSE,
+    align = "lc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    font_size = 9
+  )
+
+gmm_fa_overall_stats_table
+
+
+
+gmm_fa_byClass_stats <- as.data.frame(gmm_fa_conf_matrix$byClass)
+gmm_fa_byClass_stats <- t(gmm_fa_byClass_stats) # I want the class names to be columns not rows
+gmm_fa_byClass_stats <- as.data.frame(gmm_fa_byClass_stats)
+
+
+gmm_fa_byClass_stats_table <- gmm_fa_byClass_stats %>%
+  rownames_to_column("Statistic") %>% # turn the statistics into a column
+  kable(
+    digits = 4,
+    caption = "Gaussian Mixture Model using Factors - Statistics by Class \\label{ggm-fa-class-stats}",
+    longtable = FALSE,
+    format = "latex",
+    align = "lccccc",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+gmm_fa_byClass_stats_table
+
+```
+
+Operating on the factors rather than the original features, overall accuracy is slightly higher (\autoref{tab:ggm-fa-stats}) and the balanced accuracy of cluster 3 (class D) is slightly lower (\autoref{tab:ggm-fa-class-stats}). This is a trade off that requires more knowledge of the intended use of the model to make a choice between the two.
+
+However, the fact that factor analysis leads to increased accuracy overall while decreasing the dimensionality of the data so far is an interesting finding.
+
+#### Model Evaluation
+
+```{r cluster-uncertainty, fig.cap="**Cluster Uncertainty Plot:** *Clusters shown with uncertain points by size*", out.width="100%", fig.margin=TRUE}
+#| cache: true
+
+final_model <- fitM_fa
+
+fviz_mclust(fitM, "uncertainty")
+```
+
+```{r uncertainty-in-classes}
+#| cache: true
+
+high_uncertainty <- which(fitM$uncertainty > 0.4)
+
+
+# table(data_labels$label[high_uncertainty])
+
+cluster_composition <- data.frame(
+  cluster = fitM$classification,
+  true_label = data_labels$label
+) %>%
+  group_by(cluster) %>%
+  count(true_label) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  arrange(cluster, desc(percentage))
+
+
+uncertainty_table <- cluster_composition %>%
+  kable(
+    caption = "High Uncertainty points in each Class",
+    digits = 4,
+    longtable = FALSE,
+    # align = "lccccc",
+    format = "latex",
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  )
+
+uncertainty_table
+```
+
+## Bootstrapping
+
+Bootstrapping was used to oversample the original dataset and increase the number of observations to 10,000. With a test-train split of 70%-30%, the model were trained on 7000 observations for supervised methods. All three models receive a modest bump in overall accuracy and in the Class D F1 score (\autoref{tab:bootstrap}). This shows that the performance of any model can be improved without any further tuning by collecting a larger dataset from the population. However, the increases are small and it is very likely that the cost of collecting more data is prohibitive given the performance gains that this analysis suggests can be expected. Given this finding, it is recommended that further research focuses on improved modeling techniques, or the collection data with new descriptive features.
+
+In unsupervised learning, the bootstrapping method leads to poor performance from the model based model, which now suggests an optimal number of clusters of 8. The duplication caused by bootstrapping violates the assumptions that underpin the gaussian mixture model approach because it is assumed that the data is all drawn from the population produced by normal distributions. This means that bootstrapping is not appropriate for testing the performance of this model on a larger dataset.
+
+```{r bootstrapping-supervised-results}
+#| cache: true
+
+
+# bootstrap the data, then train all the models and predict, then create one table with the results of all the models
+
+
+
+data <- read_csv("data_clean.csv")
+data$label <- as.factor(data$label)
+
+# create test and train data splits we can use for the rest of the modelling
+training.samples <- data$label %>%
+  createDataPartition(p = 0.8, list = FALSE) # create 70:30 split for train:test. choose 70:30 instead of 80:20 since we have lots of data and we are looking to increase the amount of test data for more granular results
+train_data  <- data[training.samples, ]
+test_data <- data[-training.samples, ]
+
+bootstrap_train_data <- train_data %>% sample_n(size=10000, replace=TRUE)
+bootstrap_test_data <- test_data %>% sample_n(size=10000, replace=TRUE)
+
+
+lr_bootstrap_model <- multinom(
+    label ~ ., # use all cols
+    data = train_data,
+    trace = FALSE
+    )
+
+svm_bootstrap_model <- svm(
+  label ~ .,
+  data = bootstrap_train_data,
+  kernel = "radial",
+  cost = optimal_params$C,
+  gamma = optimal_params$sigma,
+  scale = FALSE
+)
+ 
+rf_bootstrap_model <- randomForest(
+  label ~ .,
+  data =bootstrap_train_data,
+  ntree = 500,           # number of trees we will use to start - can tune this later
+  mtry = 6, # optimal value from tuning with RFTune
+  importance = TRUE,
+)
+
+lr_bootstrap_predictions <- predict(lr_bootstrap_model, bootstrap_test_data)
+svm_bootstrap_predictions <- predict(svm_bootstrap_model, bootstrap_test_data)
+rf_bootstrap_predictions <- predict(rf_bootstrap_model, bootstrap_test_data)
+
+lr_bootstrap_conf_matrix <- confusionMatrix(lr_bootstrap_predictions, bootstrap_test_data$label)
+svm_bootstrap_conf_matrix <- confusionMatrix(svm_bootstrap_predictions, bootstrap_test_data$label)
+rf_bootstrap_conf_matrix <- confusionMatrix(rf_bootstrap_predictions, bootstrap_test_data$label)
+
+# get the overall accuracy of each bstrp model from the conf matrix
+lr_bootstrap_acc <- unname((lr_bootstrap_conf_matrix$overall)["Accuracy"])
+svm_bootstrap_acc <- unname((svm_bootstrap_conf_matrix$overall)["Accuracy"])
+rf_bootstrap_acc <- unname((rf_bootstrap_conf_matrix$overall)["Accuracy"])
+
+
+# get the overall statistics for the original dataset models.
+
+lr_orig_acc <- unname((simple_logreg_conf_matrix$overall)["Accuracy"])
+svm_orig_acc <- unname((svm_final_conf_matrix$overall)["Accuracy"])
+rf_orig_acc <- unname((rf_tuned_conf_matrix$overall)["Accuracy"])
+
+# lr_orig_acc
+# rf_orig_acc
+
+# get the by class stats for each model - we will get the class d f1 score from these
+
+lr_bootstrap_d_f1 <- lr_bootstrap_conf_matrix$byClass[,"F1"]["Class: D"]
+svm_bootstrap_d_f1 <- svm_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
+rf_bootstrap_d_f1 <- rf_bootstrap_conf_matrix$byClass[, "F1"]["Class: D"]
+
+
+lr_orig_d_f1 <- simple_logreg_conf_matrix$byClass[,"F1"]["Class: D"]
+svm_orig_d_f1 <- svm_final_conf_matrix$byClass[, "F1"]["Class: D"]
+rf_orig_d_f1 <- rf_tuned_conf_matrix$byClass[, "F1"]["Class: D"]
+
+
+
+
+Model <- c("Logistic Regression", "Support Vector Machines", "Random Forest")
+original_accuracy <- c(lr_orig_acc, svm_orig_acc, rf_orig_acc)
+original_d_f1 <- c(lr_orig_d_f1, svm_orig_d_f1, rf_orig_d_f1)
+bootstrap_accuracy <- c(lr_bootstrap_acc, svm_bootstrap_acc, rf_bootstrap_acc)
+bootstrap_d_f1 <- c(lr_bootstrap_d_f1, svm_bootstrap_d_f1, rf_bootstrap_d_f1)
+
+comp_df = data.frame(
+  Model,
+  original_accuracy,
+  original_d_f1,
+  bootstrap_accuracy,
+  bootstrap_d_f1
+)
+
+
+
+# comp_df
+
+comparison_table <- comp_df %>% kable(
+    caption = "Comparison of Model Performance on Bootstrapped Data \\label{tab:bootstrap}",
+    digits = 4,
+    align = "lcccc",
+    col.names = c("Model", "Accuracy", "Class D F1 Score", "Accuracy", "Class D F1 Score"),
+    format = "latex",
+    longtable = FALSE,
+    booktabs = TRUE
+  ) %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9
+  ) %>%
+  add_header_above(c(" "=1, "Original Data"=2, "Bootstrapped Data" = 2))
+
+comparison_table
+
+
+```
+
+```{r bootstrap-unsupervised-results}
+# bootstrap_features <- bootstrap_data %>% select(-label)
+# bootstrap_labels <- bootstrap_data %>% select(label)
+# 
+# 
+# fitM_bootstrap <- Mclust(bootstrap_features)
+# 
+# 
+# summary(fitM_bootstrap)
+# 
+# BIC_bootstrap <- mclustBIC(bootstrap_features)
+# plot(BIC_bootstrap)
+
+
+
+```
+
+# Discussion
+
+The relative performance of different learning models can give some insight to the underlying structure of the data. If random forest and agglomerative hierarchical clustering performed significantly better than the other models, this would be evidence that the data was hierarchical in nature. If logistic regression performed as well as any of the other models, it would indicate that the data was extremely structured and easy to model, with strong linear relationships between the predictive features and the labels. The results found that random forest performed best followed by the radial kernel SVM. Both of these algorithms are better at modeling with non-linear relationships. This suggests that the the relationship between the features and the label exhibits some non-linearity.
+
+There are also lessons learned from the challenge of Separating class D which arose in every model that was implemented. Class D was harder for every model to correctly predict. In the context of biological data there are a several explanations of why this would happen, including that D is a super-class in a hierarchy where the other three are sub classes. This appears unlikely due to the underperformance of agglomerative hierarchical clustering. Another explanation is that D could be a transition state between other classes. This is not supported by the visualization of the data where class D seems to form a differently shaped sigmoid to the other classes, and overlap all three. Its still possible that D represents an immature state that will later develop into one of the other three. The uncertainty of the predictions of this class by an array of models with such different underlying principals suggests that the difficulty is not a limitation of any algorithm, and it is likely that the features of the data do not have the predictive power necessary for efficient separation of class D. Better performing models could be developed if data was collected with additional variables.
+
+At the outset of the project, it was reasonable to assume that the supervised learning would out-perform the unsupervised learning models. This held for the hierarchical clustering approach, which performed particularly poorly. This appears to have been a poor model for our data, revealing that the data likely does not contain a hierarchical structure. Further research could attempt to improve the performance using distance metrics other than euclidean, however the promising results achieved using other methods leads to this option not being recommended. The second unsupervised method has very different underlying principals, and performed much better.
+
+The gaussian mixture model achieving the highest performance metrics speaks to the high amounts of noise present within each cluster and the dataset as a whole, as performing well on these kinds of data is a hallmark of the gmm algorithm.
+
+Factor analysis had some success as the gmm model was able to retain its high accuracy and increase the F1 score of class D with a considerable reduction in the dimensionality of the data, suggesting the existence of underlying biological mechanisms or environmental factors that lead to the observed features arising. Although well performing statistical models were trained using the features and the factor analysis approach, better results might be possible using the underlying factors themselves if it is possible to measure them.
+
+The best models had good overall accuracy but caution is advised for implementing any model with this data due to the underperformance in class D - if false positives or false negatives in this class have serious implications, some models become immediately unusable. Examples were this would be the case include when the classes represent risk of side effects to a medication option.
+
+# Conclusion
+
+The results of this project demonstrate how advanced statistical techniques are relevant to fields of research using biological data, with the potential for powerful models evident. The gaussian mixed model would be the one model that could be taken forward for use classifying new data collected or for generalizing to another data set because of its high overall accuracy but particularly because of its high balanced accuracy in class D compared to other models. The greatest limitation of the models trained in this project is the underperformance of classifying class D, which could be critical in some applications. The collection of data with more descriptive features could allow for the development of more powerful models using the same techniques, or the work in this project could be build upon to create more refined models that perform better for specific use cases. Further research should focus on improving the results of the random forest and gaussian mixture model approaches. An algorithm such as A gradient boosting algorithm such as XGBoost or lightGBM would build upon the successful tree-based approach of random forest. With each tree in a gradient boosting approach able to learn from the one before and the high tunability of the model, a model that performs better at the shortcomings of models in this report is possible [@chenXGBoostScalableTree2016]. An exciting direction to take forward the success of gmm would be to experiment with semi-supervised learning. A sample of class labels supplied to a model based clustering algorithm to guide the initial assignment of cluster can lead to learning distributions that are more specific to each cluster, with better results [@geronHandsonMachineLearning2023].
+
+# References
+
+::: {#refs}
+---
+nocite: |
+  @Hill_Advanced-Statistics
+---
+:::
+
+\clearpage  
+\onecolumn
+
+# Appendix {.appendix}
+
+\setcounter{table}{0}
+\renewcommand{\thetable}{A\arabic{table}}
+
+## Data Description Tables
+
+```{r feature-data-descriptions}
+#| cache: true
+
+data <- read_csv("Data(2).csv")
+
+desc <- skim(data)
+desc <- desc %>% 
+  select(
+    skim_variable, 
+    n_missing, 
+    numeric.mean, 
+    numeric.sd, 
+    numeric.p0, 
+    numeric.p25, 
+    numeric.p50, 
+    numeric.p75, 
+    numeric.p100, 
+  ) %>% 
+  filter(
+    skim_variable != "label"
+  ) %>%
+  rename(
+    "Variable Name" = skim_variable, 
+    "No. missing values" = n_missing, 
+    "mean" = numeric.mean, 
+    "Std deviation" = numeric.sd, 
+    "min" = numeric.p0, 
+    "25th %ile" = numeric.p25, 
+    "median" = numeric.p50, 
+    "75th %ile" = numeric.p75, 
+    "max" = numeric.p100, 
+  ) %>%
+  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) 
+
+desc_table <- desc %>% 
+  kable(
+    caption = "Feature Descriptions - Raw Data \\label{tab:feat-desc}", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-",
+    longtable = T,
+    label = 
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9,
+    full_width = FALSE
+  )
+
+desc_table
+```
+
+\onecolumn
+
+```{r feature-data-descriptions-postproccessing}
+#| cache: true
+
+data <- read_csv("data_clean.csv")
+
+desc <- skim(data)
+desc <- desc %>% 
+  select(
+    skim_variable, 
+    n_missing, 
+    numeric.mean, 
+    numeric.sd, 
+    numeric.p0, 
+    numeric.p25, 
+    numeric.p50, 
+    numeric.p75, 
+    numeric.p100, 
+  ) %>% 
+  filter(
+    skim_variable != "label"
+  ) %>%
+  rename(
+    "Variable Name" = skim_variable, 
+    "No. missing values" = n_missing, 
+    "mean" = numeric.mean, 
+    "Std deviation" = numeric.sd, 
+    "min" = numeric.p0, 
+    "25th %ile" = numeric.p25, 
+    "median" = numeric.p50, 
+    "75th %ile" = numeric.p75, 
+    "max" = numeric.p100, 
+  ) %>%
+  mutate(across(everything(), ~ifelse(. == "NA", "-", .))) 
+
+desc_table <- desc %>% 
+  kable(
+    caption = "Feature Descriptions - Preprocessed \\label{tab:feat-desc-post}", 
+    digits = 3, 
+    align = "c",
+    booktabs = TRUE,
+    na="-",
+    longtable = T,
+    label = 
+  ) %>% 
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"),
+    font_size = 9,
+    full_width = FALSE
+  )
+
+desc_table
+```
