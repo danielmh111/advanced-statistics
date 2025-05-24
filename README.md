@@ -7,6 +7,8 @@
 
 This was my final assessment for the Advanced Statistics module of my MSc in Data Science. The goal was to dive deep into both supervised and unsupervised learning methods, apply them to a real dataset, and write up the findings in academic style.
 
+**[→ See the complete analysis and results here](./report.pdf)**
+
 It was actually my first time working extensively with R (the module required it), and I really enjoyed the challenge of transferring my Python skills to a new language while tackling the subject matter.
 
 ## What I Built
